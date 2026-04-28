@@ -37,7 +37,7 @@ def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
         print(f"Merge successful! Valid routes found: {len(routes)}")
 
         # Take the first 15,000 for a dense but performant sphere
-        data = routes[['lat_src', 'lon_src', 'lat_dst', 'lon_dst']].values[:15000]
+        data = routes[['lat_src', 'lon_src', 'lat_dst', 'lon_dst']].values
 
         all_points = []
         for r in data:
