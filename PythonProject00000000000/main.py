@@ -8,7 +8,9 @@ import dataset
 # --- Project Config ---
 WINDOW_SIZE = (2560, 1440)
 EARTH_RADIUS = 3.0
-POINTS_PER_ARC = 40
+POINTS_PER_ARC = 400
+
+
 
 
 def lat_lon_to_xyz(lat, lon, r):
@@ -18,7 +20,6 @@ def lat_lon_to_xyz(lat, lon, r):
     y = r * np.cos(phi)
     z = r * np.sin(phi) * np.sin(theta)
     return [x, y, z]
-
 
 def draw_flight_routes(base_particle_size,hover_glow,vbo,points_to_draw):
     glEnable(GL_BLEND)
@@ -65,7 +66,7 @@ def draw_labels(zoom_level, airport_labels,to_render):
                 continue
 
         to_render.sort(key=lambda x: x['depth'])
-        to_render = to_render[:12]
+        to_render = to_render[:90]
 
         # --- STEP 2: RENDERING ---
 
@@ -120,11 +121,32 @@ def draw_labels(zoom_level, airport_labels,to_render):
 
             glDisable(GL_TEXTURE_2D)
 
+def draw_borders(rot_x,rot_y,zoom_level,show_border,border_vbo,border_data,earth_core):
+    # --- DRAWING PHASE ---
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glLoadIdentity()
+    glTranslatef(0, 0, zoom_level)
+    glRotatef(rot_x, 1, 0, 0)
+    glRotatef(rot_y, 0, 1, 0)
 
+    # 0. DRAW THE OCCLUSION CORE (Blocks the back side)
+    # Disable blending so it draws a solid black mask
+    glDisable(GL_BLEND)
+    glColor3f(0.0, 0.0, 0.0)  # Pitch black
+    # Radius 2.94 ensures it sits just under borders (2.97) and air (3.0)
+    gluSphere(earth_core, EARTH_RADIUS * 0.98, 32, 32)
+    glEnable(GL_BLEND)  # Turn the glow effect back on for the data
 
+    # 1. DRAW BORDERS (If enabled)
+    if show_border:
+        glLineWidth(1.0)
+        glColor4f(0.7, 0.2, 0.1, 0.9)
 
-
-
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, border_vbo)
+        glVertexPointer(3, GL_FLOAT, 0, None)
+        glDrawArrays(GL_LINES, 0, len(border_data))
+        glDisableClientState(GL_VERTEX_ARRAY)
 
 def main():
     pygame.init()
@@ -170,12 +192,23 @@ def main():
         hub['w_base'] = w / h  # Aspect Ratio
         hub['h_base'] = 1.0  # Base Unit
 
+
+    border_data = dataset.get_world_borders(lat_lon_to_xyz, EARTH_RADIUS)
+    border_vbo = glGenBuffers(1)
+    glBindBuffer(GL_ARRAY_BUFFER, border_vbo)
+    glBufferData(GL_ARRAY_BUFFER, border_data.nbytes, border_data, GL_STATIC_DRAW)
+
+    # Create the geometry for the invisible occlusion sphere
+    earth_core = gluNewQuadric()
+    gluQuadricNormals(earth_core, GLU_SMOOTH)
+
     # --- State ---
     rot_x, rot_y = 0, 0
     zoom_level = -12.0
     base_particle_size = 1.0
     total_points = len(vertex_data) // 3
     clock = pygame.time.Clock()
+    show_borders = True
 
 
     while True:
@@ -189,6 +222,13 @@ def main():
                     zoom_level = min(-3.5, zoom_level + 0.5)
                 if event.button == 5:
                     zoom_level = max(-50.0, zoom_level - 0.5)
+
+            # --- TOGGLE BORDERS (Press 'B') ---
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_b:
+                    show_borders = not show_borders
+                    print(f"Borders Visible: {show_borders}")
+
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -249,6 +289,7 @@ def main():
             glBlendFunc(GL_SRC_ALPHA, GL_ONE)
 
         # --- 1. Draw flight routes ---
+        draw_borders(rot_x, rot_y, zoom_level, show_borders, border_vbo, border_data,earth_core)
         draw_flight_routes(base_particle_size, hover_glow, vbo, points_to_draw)
 
         # --- 2. Airport hub dots ---

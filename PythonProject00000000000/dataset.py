@@ -1,4 +1,7 @@
 import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Polygon, MultiPolygon
+import numpy as np
 
 def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
     print("Fetching and Cleaning OpenFlights Data...")
@@ -63,3 +66,39 @@ def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
     except Exception as e:
         print(f"Process failed: {e}")
         return np.array([[0,0,0]], dtype='float32'), []
+
+
+
+
+
+def get_world_borders(lat_lon_to_xyz, r):
+    print("Loading World Borders (Solid Lines)...")
+    # Load Natural Earth low-res dataset built into GeoPandas
+    try:
+        world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    except AttributeError:
+        # Fallback for newer GeoPandas versions
+        import geodatasets
+        world = gpd.read_file(geodatasets.get_path('naturalearth.land'))
+
+    line_vertices = []
+
+    for _, row in world.iterrows():
+        geom = row.geometry
+
+        # Handle both single Polygons and MultiPolygons (e.g., islands, Japan, UK)
+        polys = [geom] if isinstance(geom, Polygon) else geom.geoms
+
+        for poly in polys:
+            coords = list(poly.exterior.coords)
+
+            # Convert all 2D lat/lon to 3D sphere coordinates
+            # Render slightly below the airways (0.99)
+            pts = [lat_lon_to_xyz(lat, lon, r * 0.99) for lon, lat in coords]
+
+            # Create pairs for GL_LINES
+            for i in range(len(pts) - 1):
+                line_vertices.append(pts[i])  # Start of segment
+                line_vertices.append(pts[i + 1])  # End of segment
+
+    return np.array(line_vertices, dtype='float32')
