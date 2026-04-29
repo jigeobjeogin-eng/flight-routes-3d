@@ -4,6 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
 import dataset
+from TextBox import TextBox
 
 # --- Project Config ---
 WINDOW_SIZE = (2560, 1440)
@@ -36,7 +37,6 @@ def draw_text_2d(x, y, text, font, color=(255, 255, 255, 255)):
     # Set the pixel position and draw
     glRasterPos2d(x, y)
     glDrawPixels(text_surface.get_width(), text_surface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, text_data)
-
 
 def draw_ui(screen_width, screen_height, search_text, is_active):
     """Switches to 2D mode to draw the search UI, then switches back to 3D."""
@@ -98,7 +98,6 @@ def draw_ui(screen_width, screen_height, search_text, is_active):
     glMatrixMode(GL_MODELVIEW)
     glPopMatrix()
 
-
 def lat_lon_to_xyz(lat, lon, r):
     phi = np.radians(90 - lat)
     theta = np.radians(lon + 180)
@@ -121,91 +120,93 @@ def draw_flight_routes(base_particle_size,hover_glow,vbo,points_to_draw):
     glBindBuffer(GL_ARRAY_BUFFER, 0)
 
 def draw_hub_dots(zoom_level, airport_labels):
-    if zoom_level > -10.0:
-        glPointSize(4.0)
+    if zoom_level > -15.0:
+        glPointSize(1.0)
         glColor4f(1.0, 1.0, 1.0, 1.0)
         glBegin(GL_POINTS)
         for hub in airport_labels:
             glVertex3f(hub['pos'][0], hub['pos'][1], hub['pos'][2])
         glEnd()
 
-def draw_labels(zoom_level, airport_labels,to_render):
-    if zoom_level > -18.0:
-        modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
-        projection = glGetDoublev(GL_PROJECTION_MATRIX)
-        viewport = glGetIntegerv(GL_VIEWPORT)
+def draw_labels(zoom_level, airport_labels,to_render, show_labels):
+    if show_labels:
 
-        for hub in airport_labels:
-            if 'tex_id' not in hub: continue
-            try:
-                sx, sy, sz = gluProject(hub['pos'][0], hub['pos'][1], hub['pos'][2],
-                                        modelview, projection, viewport)
+        if zoom_level > -18.0:
+            modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
+            projection = glGetDoublev(GL_PROJECTION_MATRIX)
+            viewport = glGetIntegerv(GL_VIEWPORT)
 
-                # sz < 0.7 filters for the front of the globe
-                if 0 < sz < 1:
-                    to_render.append({
-                        'depth': sz,
-                        'hub_ref': hub  # THIS IS THE KEY LINK
+            for hub in airport_labels:
+                if 'tex_id' not in hub: continue
+                try:
+                    sx, sy, sz = gluProject(hub['pos'][0], hub['pos'][1], hub['pos'][2],
+                                            modelview, projection, viewport)
 
-                    })
-            except:
-                continue
+                    # sz < 0.7 filters for the front of the globe
+                    if 0 < sz < 1:
+                        to_render.append({
+                            'depth': sz,
+                            'hub_ref': hub  # THIS IS THE KEY LINK
 
-        to_render.sort(key=lambda x: x['depth'])
-        to_render = to_render[:90]
+                        })
+                except:
+                    continue
 
-        # --- STEP 2: RENDERING ---
+            to_render.sort(key=lambda x: x['depth'])
+            to_render = to_render[:90]
 
-        # --- STEP 2: DYNAMICALLY SCALED 3D RENDERER ---
-        if to_render:
-            glEnable(GL_TEXTURE_2D)
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            glColor4f(1, 1, 1, 1)
+            # --- STEP 2: RENDERING ---
 
-            mv = glGetDoublev(GL_MODELVIEW_MATRIX)
-            right = np.array([mv[0][0], mv[1][0], mv[2][0]])
-            up = np.array([mv[0][1], mv[1][1], mv[2][1]])
+            # --- STEP 2: DYNAMICALLY SCALED 3D RENDERER ---
+            if to_render:
+                glEnable(GL_TEXTURE_2D)
+                glEnable(GL_BLEND)
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                glColor4f(1, 1, 1, 1)
 
-            for item in to_render:
-                hub = item['hub_ref']
-                glBindTexture(GL_TEXTURE_2D, hub['tex_id'])
+                mv = glGetDoublev(GL_MODELVIEW_MATRIX)
+                right = np.array([mv[0][0], mv[1][0], mv[2][0]])
+                up = np.array([mv[0][1], mv[1][1], mv[2][1]])
 
-                p = np.array(hub['pos']) * 1.05
+                for item in to_render:
+                    hub = item['hub_ref']
+                    glBindTexture(GL_TEXTURE_2D, hub['tex_id'])
 
-                # --- THE DYNAMIC FIX ---
-                # Since the camera is at 0,0,0 and the world is moved by zoom_level:
-                # We use the absolute value of zoom_level to determine 'distance'
-                # As zoom_level goes from -3.5 to -50.0, the labels will scale up
-                # to stay visible.
+                    p = np.array(hub['pos']) * 1.05
 
-                actual_dist = abs(zoom_level)**2
+                    # --- THE DYNAMIC FIX ---
+                    # Since the camera is at 0,0,0 and the world is moved by zoom_level:
+                    # We use the absolute value of zoom_level to determine 'distance'
+                    # As zoom_level goes from -3.5 to -50.0, the labels will scale up
+                    # to stay visible.
 
-                # Scale logic: Base_Size * Distance * Constant
-                # Adjust 0.001 to find your "sweet spot" for text size
-                dynamic_scale = actual_dist * 0.0005
+                    actual_dist = abs(zoom_level) ** 2
 
-                w = hub['w_base'] * dynamic_scale
-                h = hub['h_base'] * dynamic_scale
+                    # Scale logic: Base_Size * Distance * Constant
+                    # Adjust 0.001 to find your "sweet spot" for text size
+                    dynamic_scale = actual_dist * 0.0005
 
-                glBegin(GL_QUADS)
-                glTexCoord2f(0, 0);
-                glVertex3f(p[0], p[1], p[2])
-                glTexCoord2f(1, 0);
-                glVertex3f(p[0] + right[0] * w,
-                           p[1] + right[1] * w,
-                           p[2] + right[2] * w)
-                glTexCoord2f(1, 1);
-                glVertex3f(p[0] + right[0] * w + up[0] * h,
-                           p[1] + right[1] * w + up[1] * h,
-                           p[2] + right[2] * w + up[2] * h)
-                glTexCoord2f(0, 1);
-                glVertex3f(p[0] + up[0] * h,
-                           p[1] + up[1] * h,
-                           p[2] + up[2] * h)
-                glEnd()
+                    w = hub['w_base'] * dynamic_scale
+                    h = hub['h_base'] * dynamic_scale
 
-            glDisable(GL_TEXTURE_2D)
+                    glBegin(GL_QUADS)
+                    glTexCoord2f(0, 0);
+                    glVertex3f(p[0], p[1], p[2])
+                    glTexCoord2f(1, 0);
+                    glVertex3f(p[0] + right[0] * w,
+                               p[1] + right[1] * w,
+                               p[2] + right[2] * w)
+                    glTexCoord2f(1, 1);
+                    glVertex3f(p[0] + right[0] * w + up[0] * h,
+                               p[1] + right[1] * w + up[1] * h,
+                               p[2] + right[2] * w + up[2] * h)
+                    glTexCoord2f(0, 1);
+                    glVertex3f(p[0] + up[0] * h,
+                               p[1] + up[1] * h,
+                               p[2] + up[2] * h)
+                    glEnd()
+
+                glDisable(GL_TEXTURE_2D)
 
 def draw_borders(rot_x,rot_y,zoom_level,show_border,border_vbo,border_data,earth_core):
     # --- DRAWING PHASE ---
@@ -233,6 +234,8 @@ def draw_borders(rot_x,rot_y,zoom_level,show_border,border_vbo,border_data,earth
         glVertexPointer(3, GL_FLOAT, 0, None)
         glDrawArrays(GL_LINES, 0, len(border_data))
         glDisableClientState(GL_VERTEX_ARRAY)
+
+
 
 def main():
     pygame.init()
@@ -289,6 +292,14 @@ def main():
     earth_core = gluNewQuadric()
     gluQuadricNormals(earth_core, GLU_SMOOTH)
 
+    # Example: A box in the top-left corner
+    # Remember: OpenGL Y=0 is the BOTTOM of the screen.
+    # If your screen height is 720, Y=600 is near the top.
+    info_box = TextBox(x=1155, y=WINDOW_SIZE[1] - 1300, width=250, height=120)
+
+    # You can set initial multiline text
+
+
     # --- State ---
     rot_x, rot_y = 0, 0
     zoom_level = -12.0
@@ -296,6 +307,7 @@ def main():
     total_points = len(vertex_data) // 3
     clock = pygame.time.Clock()
     show_borders = True
+    show_labels = True
     is_typing = False
 
 
@@ -323,8 +335,7 @@ def main():
 
             # --- 2. KEYBOARD TYPING LOGIC ---
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_b:
-                    show_borders = not show_borders
+
 
                 if is_typing:
                     if event.key == pygame.K_RETURN:
@@ -352,11 +363,16 @@ def main():
                             if not isinstance(vertex_data, np.ndarray):
                                 vertex_data = np.array(vertex_data, dtype='float32')
 
+                            route_count = len(vertex_data) // POINTS_PER_ARC
+                            info_box.set_text(f"Display: Global Network\nTotal Paths: {route_count}")
+
                         else:
                             # --- SEARCH TASK ---
                             print(f"Filtering for: {clean_query}")
                             vertex_data = dataset.get_filtered_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS,
                                                                            POINTS_PER_ARC, clean_query)
+                            route_count = len(vertex_data) // POINTS_PER_ARC
+                            info_box.set_text(f"Search: {clean_query.upper()}\nTotal Paths: {route_count}")
 
                             # VBO CRASH PREVENTION
                         if len(vertex_data) == 0:
@@ -372,6 +388,16 @@ def main():
 
                     elif event.unicode.isprintable() and len(search_query) < 25:
                         search_query += event.unicode
+                else:
+                    if event.key == pygame.K_b:
+                        show_borders = not show_borders
+                    if event.key == pygame.K_n:
+                        show_labels= not show_labels
+                    if event.key == pygame.K_UP:
+                        base_particle_size = min(100.0, base_particle_size + 0.1)
+                    if event.key == pygame.K_DOWN:
+                        base_particle_size = max(0.1, base_particle_size - 0.1)
+
 
             # Mouse drag rotation (keep your existing logic here)
             if event.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0] and not is_typing:
@@ -411,7 +437,7 @@ def main():
 
             alpha = (zoom_level - start_fade) / fade_range
             alpha = max(0.0, min(1.0, alpha))  # Clamp between 0 and 1
-            print(1- alpha)
+
 
             glEnable(GL_BLEND)
             # Use Standard Transparency for the "Shield"
@@ -437,9 +463,11 @@ def main():
 
         # --- 3. LABELS ---
         to_render = []
-        draw_labels(zoom_level, airport_labels, to_render)
+
+        draw_labels(zoom_level, airport_labels, to_render, show_labels)
 
         draw_ui(WINDOW_SIZE[0], WINDOW_SIZE[1], search_query, is_typing)
+        info_box.draw(WINDOW_SIZE[0], WINDOW_SIZE[1])  # Draw the new text box
 
 
 

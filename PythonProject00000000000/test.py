@@ -4,6 +4,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
 import pandas as pd
+from TextBox import TextBox
 
 # --- Project Config ---
 WINDOW_SIZE = (1280, 720)
@@ -97,6 +98,10 @@ def main():
     vbo = glGenBuffers(1)
     glBindBuffer(GL_ARRAY_BUFFER, vbo)
     glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
+
+    info_box = TextBox(x=20, y=WINDOW_SIZE[1] - 140, width=250, height=120)
+    # You can set initial multiline text
+    info_box.set_text("Global Network Mode\nTotal Routes: 15,000\nStatus: Active")
 
     rot_x, rot_y = 0, 0
     zoom_level = -12.0
