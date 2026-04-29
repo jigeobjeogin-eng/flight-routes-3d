@@ -240,6 +240,7 @@ def main():
     pygame.display.set_caption("Global Transportation Tree - AIR PHASE")
     pygame.font.init()
     FONT = pygame.font.SysFont('Arial', 12)
+    search_query = ""
 
     # --- Matrix Setup ---
     glMatrixMode(GL_PROJECTION)
@@ -296,7 +297,7 @@ def main():
     clock = pygame.time.Clock()
     show_borders = True
     is_typing = False
-    search_query = ""
+
 
 
     while True:
@@ -327,17 +328,44 @@ def main():
 
                 if is_typing:
                     if event.key == pygame.K_RETURN:
-                        # 1. Fetch the newly filtered data
-                        # We pass `search_query` which handles both text and empty string ""
-                        vertex_data = dataset.get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC,
-                                                              search_query)
+                        is_typing = False
 
-                        # 2. Hot-swap the GPU Memory
-                        # This instantly deletes the old routes and uploads the new ones
+                        # 1. Clean the input (removes accidental spaces)
+                        clean_query = search_query.strip()
+
+                        if clean_query == "":
+                            # --- CLEAR TASK ---
+                            search_query = ""
+                            print("Clearing filter. Loading original network...")
+
+                            # 1. Fetch the data from your original function
+                            original_data = dataset.get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC)
+
+                            # 2. Extract just the vertex array
+                            # If it's a tuple (which the error proves it is), grab the first item [0]
+                            if isinstance(original_data, tuple):
+                                vertex_data = original_data[0]
+                            else:
+                                vertex_data = original_data
+
+                            # 3. Ensure it is explicitly formatted for OpenGL
+                            if not isinstance(vertex_data, np.ndarray):
+                                vertex_data = np.array(vertex_data, dtype='float32')
+
+                        else:
+                            # --- SEARCH TASK ---
+                            print(f"Filtering for: {clean_query}")
+                            vertex_data = dataset.get_filtered_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS,
+                                                                           POINTS_PER_ARC, clean_query)
+
+                            # VBO CRASH PREVENTION
+                        if len(vertex_data) == 0:
+                            print("No results found. Hiding routes.")
+                            vertex_data = np.array([[0.0, 0.0, 0.0]], dtype='float32')
+
+                            # Swap the GPU Memory
                         glBindBuffer(GL_ARRAY_BUFFER, vbo)
                         glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
-                        print(f"User searched for: {search_query}")
-                        is_typing = False  # Deactivate box after pressing Enter
 
                     elif event.key == pygame.K_BACKSPACE:
                         search_query = search_query[:-1]
