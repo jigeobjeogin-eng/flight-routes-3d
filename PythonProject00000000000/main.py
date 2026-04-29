@@ -8,9 +8,95 @@ import dataset
 # --- Project Config ---
 WINDOW_SIZE = (2560, 1440)
 EARTH_RADIUS = 3.0
-POINTS_PER_ARC = 400
+POINTS_PER_ARC = 20
+
+pygame.font.init()
+UI_FONT = pygame.font.SysFont('Consolas', 18)
+
+# Search Bar Dimensions
+BAR_WIDTH = 400
+BAR_HEIGHT = 40
+BAR_X = (WINDOW_SIZE[0] - BAR_WIDTH) // 2
+# Distance from the bottom of the screen
+BAR_Y_MARGIN = 20
+
+# Pygame calculates Y from the top (0) down to the bottom (720).
+# We need this Rect to check if the mouse clicks inside the box.
+SEARCH_RECT = pygame.Rect(BAR_X, WINDOW_SIZE[1] - BAR_Y_MARGIN - BAR_HEIGHT, BAR_WIDTH, BAR_HEIGHT)
 
 
+def draw_text_2d(x, y, text, font, color=(255, 255, 255, 255)):
+    """Converts a Pygame text surface into raw pixels for OpenGL to draw."""
+    if not text:
+        return
+    text_surface = font.render(text, True, color)
+    # The 'True' argument flips the image vertically because OpenGL renders bottom-to-top
+    text_data = pygame.image.tostring(text_surface, "RGBA", True)
+
+    # Set the pixel position and draw
+    glRasterPos2d(x, y)
+    glDrawPixels(text_surface.get_width(), text_surface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, text_data)
+
+
+def draw_ui(screen_width, screen_height, search_text, is_active):
+    """Switches to 2D mode to draw the search UI, then switches back to 3D."""
+    # --- Switch to 2D Orthographic Mode ---
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()  # Save 3D state
+    glLoadIdentity()
+    gluOrtho2D(0, screen_width, 0, screen_height)
+
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()  # Save 3D state
+    glLoadIdentity()
+
+    # Disable depth testing so UI renders on top of everything
+    glDisable(GL_DEPTH_TEST)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    # --- Draw Search Box Background ---
+    if is_active:
+        glColor4f(0.15, 0.15, 0.15, 0.9)  # Slightly lighter when typing
+    else:
+        glColor4f(0.05, 0.05, 0.05, 0.8)  # Darker when inactive
+
+    glBegin(GL_QUADS)
+    glVertex2f(BAR_X, BAR_Y_MARGIN)
+    glVertex2f(BAR_X + BAR_WIDTH, BAR_Y_MARGIN)
+    glVertex2f(BAR_X + BAR_WIDTH, BAR_Y_MARGIN + BAR_HEIGHT)
+    glVertex2f(BAR_X, BAR_Y_MARGIN + BAR_HEIGHT)
+    glEnd()
+
+    # --- Draw Search Box Outline ---
+    if is_active:
+        glColor4f(0.0, 0.7, 1.0, 1.0)  # Glowing blue outline when active
+    else:
+        glColor4f(0.4, 0.4, 0.4, 1.0)  # Grey outline
+
+    glLineWidth(2.0)
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(BAR_X, BAR_Y_MARGIN)
+    glVertex2f(BAR_X + BAR_WIDTH, BAR_Y_MARGIN)
+    glVertex2f(BAR_X + BAR_WIDTH, BAR_Y_MARGIN + BAR_HEIGHT)
+    glVertex2f(BAR_X, BAR_Y_MARGIN + BAR_HEIGHT)
+    glEnd()
+
+    # --- Draw Text ---
+    display_text = search_text + ("_" if is_active else "")
+    if not search_text and not is_active:
+        display_text = "Click here to search airport (e.g. JFK)..."
+
+    draw_text_2d(BAR_X + 15, BAR_Y_MARGIN + 12, display_text, UI_FONT)
+
+    # --- Restore 3D Mode ---
+    glEnable(GL_DEPTH_TEST)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)  # Restore additive blend for particles
+
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
 
 
 def lat_lon_to_xyz(lat, lon, r):
@@ -209,34 +295,58 @@ def main():
     total_points = len(vertex_data) // 3
     clock = pygame.time.Clock()
     show_borders = True
+    is_typing = False
+    search_query = ""
 
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
+                pygame.quit();
                 return
 
+            # --- 1. MOUSE CLICKS ---
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 4:
-                    zoom_level = min(-3.5, zoom_level + 0.5)
-                if event.button == 5:
-                    zoom_level = max(-50.0, zoom_level - 0.5)
+                if event.button == 1:  # Left Click
+                    mx, my = pygame.mouse.get_pos()
+                    # Check if click is inside the search box
+                    if SEARCH_RECT.collidepoint(mx, my):
+                        is_typing = True
+                    else:
+                        is_typing = False
 
-            # --- TOGGLE BORDERS (Press 'B') ---
+                # Zooming (keep your existing zoom logic here)
+                if event.button == 4: zoom_level += 0.5
+                if event.button == 5: zoom_level -= 0.5
+                zoom_level = min(-3.5, max(zoom_level, -50.0))
+
+            # --- 2. KEYBOARD TYPING LOGIC ---
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_b:
                     show_borders = not show_borders
-                    print(f"Borders Visible: {show_borders}")
 
+                if is_typing:
+                    if event.key == pygame.K_RETURN:
+                        # 1. Fetch the newly filtered data
+                        # We pass `search_query` which handles both text and empty string ""
+                        vertex_data = dataset.get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC,
+                                                              search_query)
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    base_particle_size = min(100.0, base_particle_size + 0.1)
-                if event.key == pygame.K_DOWN:
-                    base_particle_size = max(0.1, base_particle_size - 0.1)
+                        # 2. Hot-swap the GPU Memory
+                        # This instantly deletes the old routes and uploads the new ones
+                        glBindBuffer(GL_ARRAY_BUFFER, vbo)
+                        glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
+                        print(f"User searched for: {search_query}")
+                        is_typing = False  # Deactivate box after pressing Enter
 
-            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0]:
+                    elif event.key == pygame.K_BACKSPACE:
+                        search_query = search_query[:-1]
+
+                    elif event.unicode.isprintable() and len(search_query) < 25:
+                        search_query += event.unicode
+
+            # Mouse drag rotation (keep your existing logic here)
+            if event.type == pygame.MOUSEMOTION and pygame.mouse.get_pressed()[0] and not is_typing:
                 dx, dy = event.rel
                 rot_y += dx * 0.3
                 rot_x += dy * 0.3
@@ -247,6 +357,8 @@ def main():
         glTranslatef(0, 0, zoom_level)
         glRotatef(rot_x, 1, 0, 0)
         glRotatef(rot_y, 0, 1, 0)
+
+
 
         # Proximity glow: mouse near center brightens routes
         mx, my = pygame.mouse.get_pos()
@@ -298,6 +410,8 @@ def main():
         # --- 3. LABELS ---
         to_render = []
         draw_labels(zoom_level, airport_labels, to_render)
+
+        draw_ui(WINDOW_SIZE[0], WINDOW_SIZE[1], search_query, is_typing)
 
 
 
