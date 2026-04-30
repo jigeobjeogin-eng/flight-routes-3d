@@ -1,3 +1,5 @@
+
+
 import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -9,10 +11,16 @@ class TextBox:
         Note: OpenGL coordinates start with (0,0) at the BOTTOM-LEFT of the screen.
         """
         self.x = x
-        self.y = y
         self.width = width
+
+        # We calculate the TOP edge of the box.
+        # This ensures that when the box gets taller, it grows downwards, not off the screen!
+        self.top_edge = y + height
+        self.y = y
+
+        # Keep the original height as the minimum size so it doesn't shrink to 0
+        self.min_height = height
         self.height = height
-        self.text = text
 
         # UI Styling
         self.bg_color = (0.05, 0.05, 0.05, 0.8)  # Dark grey, 80% opaque
@@ -22,9 +30,28 @@ class TextBox:
         pygame.font.init()
         self.font = pygame.font.SysFont('Consolas', font_size)
 
+        # We call set_text during initialization to calculate the starting height
+        self.set_text(text)
+
     def set_text(self, new_text):
-        """Update the text dynamically."""
+        """Update the text dynamically and resize the box."""
         self.text = str(new_text)
+
+        # --- Height Calculation Logic ---
+        if not self.text:
+            self.height = self.min_height
+        else:
+            lines = self.text.split('\n')
+            line_spacing = self.font.get_height() + 4
+
+            # Calculate required height: (number of lines * spacing) + 10px padding (5 top, 5 bottom)
+            calculated_height = (len(lines) * line_spacing) + 10
+
+            # Use the larger of the two sizes
+            self.height = max(self.min_height, calculated_height)
+
+        # Update the 'y' (bottom edge) so the top edge stays perfectly anchored
+        self.y = self.top_edge - self.height
 
     def draw(self, screen_width, screen_height):
         # --- 1. Switch to 2D Orthographic Mode ---

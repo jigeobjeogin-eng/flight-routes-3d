@@ -369,10 +369,27 @@ def main():
                         else:
                             # --- SEARCH TASK ---
                             print(f"Filtering for: {clean_query}")
-                            vertex_data = dataset.get_filtered_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS,
-                                                                           POINTS_PER_ARC, clean_query)
+
+                            # 1. Unpack the TWO variables returned by the updated function
+                            vertex_data, arrivals = dataset.get_filtered_airway_data(
+                                np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC, clean_query
+                            )
+
                             route_count = len(vertex_data) // POINTS_PER_ARC
-                            info_box.set_text(f"Search: {clean_query.upper()}\nTotal Paths: {route_count}")
+
+                            # 2. Format the Arrival Names for the UI
+                            # Grab up to the first 4 destinations
+                            display_arrivals = "\n  - " + "\n  - ".join(arrivals[:4])
+
+                            # If there are more than 4, add a summary line
+                            if len(arrivals) > 4:
+                                display_arrivals += f"\n  ...and {len(arrivals) - 4} more"
+                            elif len(arrivals) == 0:
+                                display_arrivals = "\n  None"
+
+                            # 3. Update the Text Box
+                            ui_text = f"Search: {clean_query.upper()}\nTotal Paths: {route_count}\nArrivals:{display_arrivals}"
+                            info_box.set_text(ui_text)
 
                             # VBO CRASH PREVENTION
                         if len(vertex_data) == 0:

@@ -143,6 +143,17 @@ def get_filtered_airway_data(np_module, lat_lon_to_xyz, r, points_per_arc, searc
 
     filtered_routes = _search_routes[
         _search_routes['src_id'].isin(matched_ids) | _search_routes['dst_id'].isin(matched_ids)]
+
+    # --- NEW: Grab the Arrival Airport Names ---
+    # 1. Get all unique destination IDs from these specific routes
+    dest_ids = filtered_routes['dst_id'].unique()
+
+    # 2. Look up those IDs in the airports dataframe to get their names
+    dest_airports = _search_airports[_search_airports.index.isin(dest_ids)]
+
+    # 3. Convert the 'name' column into a clean Python list
+    arrival_names = dest_airports['name'].tolist()
+
     data_to_render = filtered_routes[['lat_src', 'lon_src', 'lat_dst', 'lon_dst']].values
 
     if len(data_to_render) == 0:
@@ -160,4 +171,4 @@ def get_filtered_airway_data(np_module, lat_lon_to_xyz, r, points_per_arc, searc
             alt = np_module.sin(t * np_module.pi) * 0.15
             all_points.append((interp / norm) * (r + alt))
 
-    return np_module.array(all_points, dtype='float32')
+    return np_module.array(all_points, dtype='float32'), arrival_names
