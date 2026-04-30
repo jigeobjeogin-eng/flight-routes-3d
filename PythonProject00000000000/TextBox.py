@@ -1,5 +1,3 @@
-
-
 import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -13,45 +11,44 @@ class TextBox:
         self.x = x
         self.width = width
 
-        # We calculate the TOP edge of the box.
-        # This ensures that when the box gets taller, it grows downwards, not off the screen!
-        self.top_edge = y + height
-        self.y = y
+        # --- NEW: Center Anchor Logic ---
+        # Find the absolute vertical center of the box based on your initial placement
+        self.center_y = y + (height / 2.0)
 
-        # Keep the original height as the minimum size so it doesn't shrink to 0
         self.min_height = height
         self.height = height
+        self.y = y
 
         # UI Styling
         self.bg_color = (0.05, 0.05, 0.05, 0.8)  # Dark grey, 80% opaque
         self.border_color = (0.4, 0.4, 0.4, 1.0)
-        self.text_color = (255, 255, 255, 255)  # Pygame uses 0-255 for colors
+        self.text_color = (255, 255, 255, 255)
 
         pygame.font.init()
         self.font = pygame.font.SysFont('Consolas', font_size)
 
-        # We call set_text during initialization to calculate the starting height
+        # Call set_text to calculate initial height and center the Y coordinate
         self.set_text(text)
 
     def set_text(self, new_text):
-        """Update the text dynamically and resize the box."""
+        """Update the text dynamically and resize the box from the center."""
         self.text = str(new_text)
 
-        # --- Height Calculation Logic ---
         if not self.text:
             self.height = self.min_height
         else:
             lines = self.text.split('\n')
             line_spacing = self.font.get_height() + 4
 
-            # Calculate required height: (number of lines * spacing) + 10px padding (5 top, 5 bottom)
+            # Calculate required height: (number of lines * spacing) + 10px padding
             calculated_height = (len(lines) * line_spacing) + 10
 
-            # Use the larger of the two sizes
             self.height = max(self.min_height, calculated_height)
 
-        # Update the 'y' (bottom edge) so the top edge stays perfectly anchored
-        self.y = self.top_edge - self.height
+        # --- NEW: Apply the Centered Growth ---
+        # By setting the bottom edge (Y) to exactly half the height below the center,
+        # the box naturally extends equally in both directions.
+        self.y = self.center_y - (self.height / 2.0)
 
     def draw(self, screen_width, screen_height):
         # --- 1. Switch to 2D Orthographic Mode ---
@@ -109,7 +106,7 @@ class TextBox:
 
         # --- 5. Restore 3D Mode ---
         glEnable(GL_DEPTH_TEST)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE)  # Restore your glowing additive blend
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
 
         glMatrixMode(GL_PROJECTION)
         glPopMatrix()
