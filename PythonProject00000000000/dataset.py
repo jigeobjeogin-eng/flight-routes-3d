@@ -2,6 +2,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
 import numpy as np
+import colorData
 
 def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
     print("Fetching and Cleaning OpenFlights Data...")
@@ -157,7 +158,7 @@ def get_filtered_airway_data(np_module, lat_lon_to_xyz, r, points_per_arc, searc
     data_to_render = filtered_routes[['lat_src', 'lon_src', 'lat_dst', 'lon_dst']].values
 
     if len(data_to_render) == 0:
-        return np_module.zeros((0, 3), dtype='float32')
+        return np_module.zeros((0, 3), dtype='float32'), [] # Added the empty list!
 
     # 3. Generate the 3D curves
     all_points = []
