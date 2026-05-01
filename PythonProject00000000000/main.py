@@ -5,15 +5,15 @@ from OpenGL.GLU import *
 import numpy as np
 import dataset
 from TextBox import TextBox
-import colorData as colors
-import math # Make sure math is imported at the top of your file!
+import themes.default as colors
+import math
 
 #9.0
 
 
 
 # --- Project Config ---
-WINDOW_SIZE = (2560, 1440)
+WINDOW_SIZE = (1300, 700)
 EARTH_RADIUS = 3.0
 POINTS_PER_ARC = 20
 
@@ -24,11 +24,10 @@ UI_FONT = pygame.font.SysFont('Consolas', 18)
 BAR_WIDTH = 400
 BAR_HEIGHT = 40
 BAR_X = (WINDOW_SIZE[0] - BAR_WIDTH) // 2
-# Distance from the bottom of the screen
 BAR_Y_MARGIN = 20
 
-# Pygame calculates Y from the top (0) down to the bottom (720).
-# We need this Rect to check if the mouse clicks inside the box.
+
+# check if the mouse clicks inside the box.
 SEARCH_RECT = pygame.Rect(BAR_X, WINDOW_SIZE[1] - BAR_Y_MARGIN - BAR_HEIGHT, BAR_WIDTH, BAR_HEIGHT)
 
 
@@ -97,7 +96,7 @@ def draw_ui(screen_width, screen_height, search_text, is_active):
 
     # --- Restore 3D Mode ---
     glEnable(GL_DEPTH_TEST)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE)  # Restore additive blend for particles
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
 
     glMatrixMode(GL_PROJECTION)
     glPopMatrix()
@@ -128,11 +127,10 @@ def draw_flight_routes(base_particle_size, hover_glow, vbo, points_to_draw):
 
 def draw_hub_dots(zoom_level, airport_labels):
     if zoom_level > -15.0:
-        glPointSize(1.0) # Make them a bit bigger so they are visible
+        glPointSize(1.0)
         glColor4f(*colors.HUB_DOT)
         glBegin(GL_POINTS)
         for hub in airport_labels:
-            # Multiply by 1.01 to lift the dot slightly off the surface
             px, py, pz = np.array(hub['pos']) * 1.01
             glVertex3f(px, py, pz)
         glEnd()
@@ -150,12 +148,10 @@ def draw_labels(zoom_level, airport_labels, to_render, show_labels):
                 try:
                     sx, sy, sz = gluProject(hub['pos'][0], hub['pos'][1], hub['pos'][2],
                                             modelview, projection, viewport)
-
-                    # sz < 0.7 filters for the front of the globe
                     if 0 < sz < 1:
                         to_render.append({
                             'depth': sz,
-                            'hub_ref': hub  # THIS IS THE KEY LINK
+                            'hub_ref': hub
 
                         })
                 except:
@@ -164,7 +160,7 @@ def draw_labels(zoom_level, airport_labels, to_render, show_labels):
             to_render.sort(key=lambda x: x['depth'])
             to_render = to_render[:90]
 
-            # --- STEP 2: RENDERING ---
+
 
             # --- STEP 2: DYNAMICALLY SCALED 3D RENDERER ---
             if to_render:
