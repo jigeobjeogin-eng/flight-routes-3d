@@ -11,7 +11,7 @@ import math
 # --- Project Config ---
 WINDOW_SIZE = (1280, 720)
 EARTH_RADIUS = 3.0
-POINTS_PER_ARC = 10
+POINTS_PER_ARC = 50
 
 pygame.font.init()
 
@@ -28,6 +28,73 @@ BAR_Y_MARGIN = int(H * 0.029)
 SEARCH_RECT = pygame.Rect(BAR_X, BAR_Y_MARGIN, BAR_WIDTH, BAR_HEIGHT)
 
 import math
+
+
+def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
+    if len(vertex_data) <= 1:
+        return False  # Return False to signal the animation hasn't finished
+
+    # 1. Reshape the flat data into individual routes
+    num_routes = len(vertex_data) // points_per_arc
+    routes = vertex_data.reshape(num_routes, points_per_arc, 3)
+
+    # 2. Calculate the physical 3D distance of every single route
+    starts = routes[:, 0, :]
+    ends = routes[:, -1, :]
+    # (Adding a tiny 0.0001 to prevent division-by-zero on bugged routes)
+    distances = np.linalg.norm(ends - starts, axis=1) + 0.0001
+
+    # 3. Check if the longest flight has reached its destination
+    max_distance = np.max(distances)
+    if distance_flown > max_distance + 0.5:  # 0.5 is the pause before resetting
+        return True  # Return True to tell the main loop to reset!
+
+    # --- HELPER FUNCTION: Interpolates the exact 3D position ---
+    def get_positions(current_distance):
+        prog_array = current_distance / distances
+        active_mask = prog_array <= 1.0
+
+        if not np.any(active_mask):
+            return None
+
+        p_active = prog_array[active_mask]
+        r_active = routes[active_mask]
+
+        float_idx = p_active * (points_per_arc - 1)
+        idx0 = np.floor(float_idx).astype(int)
+        idx1 = np.minimum(idx0 + 1, points_per_arc - 1)
+        blend = (float_idx - idx0)[:, np.newaxis]
+
+        p0 = r_active[np.arange(len(r_active)), idx0]
+        p1 = r_active[np.arange(len(r_active)), idx1]
+
+        return np.ascontiguousarray((p0 + (p1 - p0) * blend) * 1.01)
+        # ------------------------------------------------------------
+
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glEnableClientState(GL_VERTEX_ARRAY)
+
+    # --- Draw Main Bright Dots (Single Blink) ---
+    # --- Draw a Continuous Comet Streak ---
+    # Draws 5 overlapping circles fading out behind the main dot
+    for i in range(20):
+        # Extremely tiny gap (0.02) so the circles overlap seamlessly
+        streak_gap = i * 0.02
+
+        if distance_flown > streak_gap:
+            streak_dots = get_positions(distance_flown - streak_gap)
+            if streak_dots is not None:
+                # Get smaller and more transparent the further back it goes
+                glPointSize(1)
+                alpha = 1.0 - (i * 0.2)
+                glColor4f(0.2, 0.2, 0.6, alpha)  # Blueish fade
+
+                glVertexPointer(3, GL_FLOAT, 0, streak_dots)
+                glDrawArrays(GL_POINTS, 0, len(streak_dots))
+
+    glDisableClientState(GL_VERTEX_ARRAY)
+    return False
 
 
 def get_zoom_scale_factor(current_zoom, base_zoom=-40.0):
@@ -252,6 +319,12 @@ def main():
     zoom_dot_threshold   = -15.0
     zoom_label_threshold = -18.0
 
+    # NEW: Flight animation tracker
+    flight_tick = 0
+    distance_flown = 0.0
+    active_waves = [0.0]  # A list to track multiple waves flying at the same time
+    wave_spawn_timer = 0.0  # A timer to trigger the next wave
+
 
 
     # --- OpenGL Matrix Setup ---
@@ -439,6 +512,21 @@ def main():
                                         target_pos = master_hub['pos']
                                         break
 
+                                # --- ALIGN ALL ROUTES TO START AT THE SEARCHED HUB ---
+                                num_routes = len(vertex_data) // POINTS_PER_ARC
+                                # Reshape the array so each row is exactly one route (10 points)
+                                routes = vertex_data.reshape(num_routes, POINTS_PER_ARC, 3)
+                                target_np = np.array(target_pos, dtype='float32')
+
+                                for i in range(num_routes):
+                                    # Check distance from the start point and end point to our hub
+                                    dist_to_start = np.linalg.norm(routes[i, 0] - target_np)
+                                    dist_to_end = np.linalg.norm(routes[i, -1] - target_np)
+
+                                    # If the end is closer to the hub than the start, reverse the array!
+                                    if dist_to_end < dist_to_start:
+                                        routes[i] = routes[i][::-1]
+
                                 tx, ty, tz   = target_pos
                                 target_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
                                 target_rot_y = -math.degrees(math.atan2(tx, tz))
@@ -546,6 +634,34 @@ def main():
         draw_borders(rot_x, rot_y, zoom_level, show_borders,
                      border_vbo, border_data, earth_core)
         draw_flight_routes(base_particle_size, hover_glow, vbo, points_to_draw)
+
+        # --- ONLY ANIMATE OUTBOUND FLIGHTS ON FILTERED SEARCH ---
+        if is_filtered:
+            speed = 0.03  # The constant speed of the dots
+
+            # 1. Tick the timer and spawn a new wave if it's time
+            wave_spawn_timer += speed
+            if wave_spawn_timer >= 1.5:  # Every 1.5 units, launch a new pulse! (Lower = faster pulses)
+                active_waves.append(0.0)
+                wave_spawn_timer = 0.0
+
+            # 2. Draw all active waves and move them forward
+            surviving_waves = []
+            for dist in active_waves:
+                # Draw this wave (your function returns True when it completely finishes)
+                wave_finished = draw_shining_dots(vertex_data, dist, POINTS_PER_ARC)
+
+                # If the wave is still actively flying, keep it and add speed for the next frame
+                if not wave_finished:
+                    surviving_waves.append(dist + speed)
+
+            # Update the main list with only the waves that haven't finished yet
+            active_waves = surviving_waves
+        # --------------------------------------------------------
+
+        draw_shining_dots(vertex_data, flight_tick, POINTS_PER_ARC)
+
+
         draw_hub_dots(zoom_level, airport_labels, zoom_dot_threshold)
 
         to_render = []
