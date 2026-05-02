@@ -421,6 +421,7 @@ def main():
 
     # Camera: starts unlocked so cursor is visible and search bar is clickable
     camera_locked = False
+    camera_just_locked = False
     center_x      = W // 2
     center_y      = H // 2
     pygame.mouse.set_visible(True)
@@ -564,6 +565,7 @@ def main():
                         if camera_locked:
                             pygame.mouse.set_visible(False)
                             pygame.mouse.set_pos(center_x, center_y)
+                            camera_just_locked = True  # ← ADD THIS
                         else:
                             pygame.mouse.set_visible(True)
                     if event.key == pygame.K_ESCAPE:
@@ -591,14 +593,19 @@ def main():
 
         elif camera_locked:
 
-            mx, my   = pygame.mouse.get_pos()
-            frame_dx = mx - center_x
-            frame_dy = my - center_y
-            if frame_dx != 0 or frame_dy != 0:
-                rot_y += frame_dx * 0.2
-                rot_x += frame_dy * 0.2
-                rot_x  = max(-90.0, min(90.0, rot_x))
-                pygame.mouse.set_pos(center_x, center_y)
+            if camera_just_locked:  # ← ADD THIS BLOCK
+                camera_just_locked = False  # consume the flag
+                frame_dx = 0  # throw away the snap-frame delta
+                frame_dy = 0
+            else:
+                mx, my = pygame.mouse.get_pos()
+                frame_dx = mx - center_x
+                frame_dy = my - center_y
+                if frame_dx != 0 or frame_dy != 0:
+                    rot_y += frame_dx * 0.2
+                    rot_x += frame_dy * 0.2
+                    rot_x = max(-90.0, min(90.0, rot_x))
+                    pygame.mouse.set_pos(center_x, center_y)
         else:
             frame_dx = 0
             frame_dy = 0
