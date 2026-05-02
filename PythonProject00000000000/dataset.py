@@ -2,7 +2,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
 import numpy as np
-import colorData
+
 
 def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
     print("Fetching and Cleaning OpenFlights Data...")

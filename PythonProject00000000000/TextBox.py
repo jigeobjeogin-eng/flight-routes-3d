@@ -5,7 +5,7 @@ import math
 
 #9.0
 class TextBox:
-    def __init__(self, x, y, width, height, text="", font_size=12, screen_height=1440):
+    def __init__(self, x, y, width, height, text="", font=12, screen_height=1440):
         self.base_width = width
         self.current_width = width
         self.max_height = screen_height - 100
@@ -28,7 +28,7 @@ class TextBox:
         self.text_color = (255, 255, 255, 255)
 
         pygame.font.init()
-        self.font = pygame.font.SysFont('Consolas', font_size)
+        self.font = font
 
         self.lines_per_col = 999
         self.columns = 1
@@ -46,8 +46,8 @@ class TextBox:
 
         # LERP (Linear Interpolation): 0.15 is the spring stiffness.
         # Lower = looser spring, Higher = tighter spring.
-        self.shake_x += (target_x - self.shake_x) * 0.5
-        self.shake_y += (target_y - self.shake_y) * 0.5
+        self.shake_x += (target_x - self.shake_x) * 0.02
+        self.shake_y += (target_y - self.shake_y) * 0.02
 
     def set_text(self, new_text):
         # ... (Keep your exact set_text method exactly the same) ...
