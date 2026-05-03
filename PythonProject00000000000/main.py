@@ -1,194 +1,16 @@
-import pygame
-from pygame.locals import *
-from OpenGL.GL import *
-from OpenGL.GLU import *
-import numpy as np
-import dataset
+from PythonProject00000000000.data import dataset
 from TextBox import TextBox
-import themes.default as colors
-import math
+from renderer import *
 
-# --- Project Config ---
-WINDOW_SIZE = (1280, 720)
-EARTH_RADIUS = 3.0
-POINTS_PER_ARC = 50
 
-pygame.font.init()
-
-W, H = WINDOW_SIZE
-UI_FONT = pygame.font.SysFont('Consolas', int(18 * H/1440 ))
 
 # Search Bar Dimensions — all relative to window size
-BAR_WIDTH    = int(W * 0.307)
-BAR_HEIGHT   = int(H * 0.057)
-BAR_X        = (W - BAR_WIDTH) // 2
-BAR_Y_MARGIN = int(H * 0.029)
 
-# Pygame mouse coords: (0,0) = top-left, so rect uses BAR_Y_MARGIN from top
-SEARCH_RECT = pygame.Rect(BAR_X, BAR_Y_MARGIN, BAR_WIDTH, BAR_HEIGHT)
+
+
 
 import math
 
-
-def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
-    if len(vertex_data) <= 1:
-        return False  # Return False to signal the animation hasn't finished
-
-    # 1. Reshape the flat data into individual routes
-    num_routes = len(vertex_data) // points_per_arc
-    routes = vertex_data.reshape(num_routes, points_per_arc, 3)
-
-    # 2. Calculate the physical 3D distance of every single route
-    starts = routes[:, 0, :]
-    ends = routes[:, -1, :]
-    # (Adding a tiny 0.0001 to prevent division-by-zero on bugged routes)
-    distances = np.linalg.norm(ends - starts, axis=1) + 0.0001
-
-    # 3. Check if the longest flight has reached its destination
-    max_distance = np.max(distances)
-    if distance_flown > max_distance + 0.5:  # 0.5 is the pause before resetting
-        return True  # Return True to tell the main loop to reset!
-
-    # --- HELPER FUNCTION: Interpolates the exact 3D position ---
-    def get_positions(current_distance):
-        prog_array = current_distance / distances
-        active_mask = prog_array <= 1.0
-
-        if not np.any(active_mask):
-            return None
-
-        p_active = prog_array[active_mask]
-        r_active = routes[active_mask]
-
-        float_idx = p_active * (points_per_arc - 1)
-        idx0 = np.floor(float_idx).astype(int)
-        idx1 = np.minimum(idx0 + 1, points_per_arc - 1)
-        blend = (float_idx - idx0)[:, np.newaxis]
-
-        p0 = r_active[np.arange(len(r_active)), idx0]
-        p1 = r_active[np.arange(len(r_active)), idx1]
-
-        return np.ascontiguousarray((p0 + (p1 - p0) * blend) * 1.01)
-        # ------------------------------------------------------------
-
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-    glEnableClientState(GL_VERTEX_ARRAY)
-
-    # --- Draw Main Bright Dots (Single Blink) ---
-    # --- Draw a Continuous Comet Streak ---
-    # Draws 5 overlapping circles fading out behind the main dot
-    for i in range(20):
-        # Extremely tiny gap (0.02) so the circles overlap seamlessly
-        streak_gap = i * 0.02
-
-        if distance_flown > streak_gap:
-            streak_dots = get_positions(distance_flown - streak_gap)
-            if streak_dots is not None:
-                # Get smaller and more transparent the further back it goes
-                glPointSize(1)
-                alpha = 1.0 - (i * 0.2)
-                glColor4f(0.2, 0.2, 0.6, alpha)  # Blueish fade
-
-                glVertexPointer(3, GL_FLOAT, 0, streak_dots)
-                glDrawArrays(GL_POINTS, 0, len(streak_dots))
-
-    glDisableClientState(GL_VERTEX_ARRAY)
-    return False
-
-
-def get_zoom_scale_factor(current_zoom, base_zoom=-40.0):
-    """
-    Returns a scale multiplier based on the zoom distance.
-    If you are at the base zoom, it returns 1.0.
-    If you zoom out twice as far, it returns 0.5.
-    If you zoom in twice as close, it returns 2.0.
-    """
-    # Prevent division by zero just in case camera clips inside the exact center
-    if current_zoom == 0:
-        return 1.0
-
-    # We use abs() because OpenGL zoom levels are usually negative Z values
-    return abs(base_zoom) / abs(current_zoom)
-
-def get_screen_center_lat_lon(rot_x, rot_y):
-    """
-    Converts camera rotations directly into real-world Latitude and Longitude.
-    Returns: (latitude, longitude)
-    """
-    # Latitude is just your pitch (rot_x)
-    # It should already be clamped between -90 and 90 by your camera controls,
-    # but we clamp it here just to be perfectly safe.
-    lat = max(-90.0, min(90.0, rot_x))
-
-    # Longitude is your reversed yaw (-rot_y)
-    raw_lon = -rot_y
-
-    # Wrap the longitude so it always stays between -180 and 180 degrees
-    lon = ((raw_lon + 180) % 360) - 180
-
-    return [lat, lon]
-
-def draw_text_2d(x, y, text, font, color=colors.TEXT_DEFAULT):
-    if not text:
-        return
-    text_surface = font.render(text, True, color)
-    text_data = pygame.image.tostring(text_surface, "RGBA", True)
-    glRasterPos2d(x, y)
-    glDrawPixels(text_surface.get_width(), text_surface.get_height(),
-                 GL_RGBA, GL_UNSIGNED_BYTE, text_data)
-
-
-def draw_ui(screen_width, screen_height, search_text, is_active):
-    glMatrixMode(GL_PROJECTION)
-    glPushMatrix()
-    glLoadIdentity()
-    gluOrtho2D(0, screen_width, 0, screen_height)
-
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glLoadIdentity()
-
-    glDisable(GL_DEPTH_TEST)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    # In OpenGL ortho with gluOrtho2D(0,W,0,H): y=0 is BOTTOM, y=H is TOP.
-    # Pygame mouse y=0 is TOP. So we flip: gl_y = H - pygame_y - height
-    gl_bar_y = screen_height - BAR_Y_MARGIN - BAR_HEIGHT
-
-    # Background
-    glColor4f(*(colors.BAR_ACTIVE_BG if is_active else colors.BAR_INACTIVE_BG))
-    glBegin(GL_QUADS)
-    glVertex2f(BAR_X,             gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y + BAR_HEIGHT)
-    glVertex2f(BAR_X,             gl_bar_y + BAR_HEIGHT)
-    glEnd()
-
-    # Outline
-    glColor4f(*(colors.BAR_ACTIVE_OUTLINE if is_active else colors.BAR_INACTIVE_OUTLINE))
-    glLineWidth(2.0)
-    glBegin(GL_LINE_LOOP)
-    glVertex2f(BAR_X,             gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y + BAR_HEIGHT)
-    glVertex2f(BAR_X,             gl_bar_y + BAR_HEIGHT)
-    glEnd()
-
-    # Text — vertically centred
-    display_text = search_text + ("_" if is_active else "")
-    if not search_text and not is_active:
-        display_text = "Click here to search airport (e.g. JFK)..."
-    text_y = gl_bar_y + int(BAR_HEIGHT * 0.28)
-    draw_text_2d(BAR_X + int(BAR_WIDTH * 0.037), text_y, display_text, UI_FONT)
-
-    glEnable(GL_DEPTH_TEST)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-    glMatrixMode(GL_PROJECTION)
-    glPopMatrix()
-    glMatrixMode(GL_MODELVIEW)
-    glPopMatrix()
 
 
 def lat_lon_to_xyz(lat, lon, r):
@@ -200,109 +22,7 @@ def lat_lon_to_xyz(lat, lon, r):
     return [x, y, z]
 
 
-def draw_flight_routes(base_particle_size, hover_glow, vbo, points_to_draw):
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-    glPointSize(base_particle_size)
-    r, g, b, a = colors.ROUTE_GLOW
-    glColor4f(r, g * hover_glow, b * hover_glow, a * hover_glow)
 
-    glEnableClientState(GL_VERTEX_ARRAY)
-    glBindBuffer(GL_ARRAY_BUFFER, vbo)
-    glVertexPointer(3, GL_FLOAT, 0, None)
-    glDrawArrays(GL_POINTS, 0, points_to_draw)
-    glDisableClientState(GL_VERTEX_ARRAY)
-    glBindBuffer(GL_ARRAY_BUFFER, 0)
-
-
-def draw_hub_dots(zoom_level, airport_labels, zoom_dot_threshold):
-    if zoom_level > zoom_dot_threshold:
-        glPointSize(1.0)
-        glColor4f(*colors.HUB_DOT)
-        glBegin(GL_POINTS)
-        for hub in airport_labels:
-            px, py, pz = np.array(hub['pos']) * 1.01
-            glVertex3f(px, py, pz)
-        glEnd()
-
-
-def draw_labels(zoom_level, airport_labels, to_render, show_labels,
-                zoom_label_threshold, max_labels):
-    if not show_labels or zoom_level <= zoom_label_threshold:
-        return
-
-    modelview  = glGetDoublev(GL_MODELVIEW_MATRIX)
-    projection = glGetDoublev(GL_PROJECTION_MATRIX)
-    viewport   = glGetIntegerv(GL_VIEWPORT)
-
-    for hub in airport_labels:
-        if 'tex_id' not in hub:
-            continue
-        try:
-            sx, sy, sz = gluProject(hub['pos'][0], hub['pos'][1], hub['pos'][2],
-                                    modelview, projection, viewport)
-            if 0 < sz < 1:
-                to_render.append({'depth': sz, 'hub_ref': hub})
-        except:
-            continue
-
-    to_render.sort(key=lambda x: x['depth'])
-    to_render[:] = to_render[:max_labels]
-
-    if not to_render:
-        return
-
-    glEnable(GL_TEXTURE_2D)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glColor4f(*colors.LABEL_TINT)
-
-    mv    = glGetDoublev(GL_MODELVIEW_MATRIX)
-    right = np.array([mv[0][0], mv[1][0], mv[2][0]])
-    up    = np.array([mv[0][1], mv[1][1], mv[2][1]])
-
-    for item in to_render:
-        hub = item['hub_ref']
-        glBindTexture(GL_TEXTURE_2D, hub['tex_id'])
-
-        p             = np.array(hub['pos']) * 1.05
-        dynamic_scale = (abs(zoom_level) ** 2) * 0.0005
-        w = hub['w_base'] * dynamic_scale
-        h = hub['h_base'] * dynamic_scale
-
-        glBegin(GL_QUADS)
-        glTexCoord2f(0, 0); glVertex3f(p[0], p[1], p[2])
-        glTexCoord2f(1, 0); glVertex3f(p[0] + right[0]*w, p[1] + right[1]*w, p[2] + right[2]*w)
-        glTexCoord2f(1, 1); glVertex3f(p[0] + right[0]*w + up[0]*h,
-                                       p[1] + right[1]*w + up[1]*h,
-                                       p[2] + right[2]*w + up[2]*h)
-        glTexCoord2f(0, 1); glVertex3f(p[0] + up[0]*h, p[1] + up[1]*h, p[2] + up[2]*h)
-        glEnd()
-
-    glDisable(GL_TEXTURE_2D)
-
-
-def draw_borders(rot_x, rot_y, zoom_level, show_border,
-                 border_vbo, border_data, earth_core):
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glLoadIdentity()
-    glTranslatef(0, 0, zoom_level)
-    glRotatef(rot_x, 1, 0, 0)
-    glRotatef(rot_y, 0, 1, 0)
-
-    glDisable(GL_BLEND)
-    glColor3f(*colors.EARTH_CORE)
-    gluSphere(earth_core, EARTH_RADIUS * 0.98, 32, 32)
-    glEnable(GL_BLEND)
-
-    if show_border:
-        glLineWidth(1.0)
-        glColor4f(*colors.BORDER_LINE)
-        glEnableClientState(GL_VERTEX_ARRAY)
-        glBindBuffer(GL_ARRAY_BUFFER, border_vbo)
-        glVertexPointer(3, GL_FLOAT, 0, None)
-        glDrawArrays(GL_LINES, 0, len(border_data))
-        glDisableClientState(GL_VERTEX_ARRAY)
 
 
 def main():
@@ -311,7 +31,7 @@ def main():
     pygame.display.set_caption("Global Transportation Tree - AIR PHASE")
     pygame.font.init()
 
-    FONT = pygame.font.SysFont('Arial', 12)
+    LABEL_FONT = pygame.font.SysFont('Arial', 12)
 
     # Proportional derived values
     hover_radius         = ((W**2 + H**2) ** 0.5) * 0.5
@@ -324,6 +44,11 @@ def main():
     distance_flown = 0.0
     active_waves = [0.0]  # A list to track multiple waves flying at the same time
     wave_spawn_timer = 0.0  # A timer to trigger the next wave
+
+    #BORDER PULSE
+    # New variables for the map pulse effect
+    pulse_origin = None
+    border_distances = None
 
 
 
@@ -353,7 +78,7 @@ def main():
 
     # Pre-generate label textures
     for hub in airport_labels:
-        surf   = FONT.render(hub['text'], True, colors.LABEL_TEXT_FG, colors.LABEL_TEXT_BG)
+        surf   = LABEL_FONT.render(hub['text'], True, colors.LABEL_TEXT_FG, colors.LABEL_TEXT_BG)
         tw, th = surf.get_size()
         data   = pygame.image.tostring(surf, "RGBA", True)
         tex_id = glGenTextures(1)
@@ -374,7 +99,6 @@ def main():
     gluQuadricNormals(earth_core, GLU_SMOOTH)
 
     # TextBox positions — proportional to window
-
     mult_x = W / 2560
     mult_y = H / 1440
 
@@ -393,14 +117,12 @@ def main():
     coord_box_h = int(H * 0.1)
     coord_box_y = int(H * 0.02)
 
-
-
-
     info_box = TextBox(x=center(info_box_w), y=info_box_y * mult_y, width=info_box_w * mult_x, height=info_box_h * mult_y,
                        font=UI_FONT)
     ap_list  = TextBox(x=ap_list_x, y=ap_list_y, width=ap_list_w, height=0, font=UI_FONT)
     coord_box = TextBox(x = center(coord_box_w), y = coord_box_y, width = coord_box_w * mult_x, height = coord_box_h * mult_y,
                         font=UI_FONT)
+
 
     vertex_data = np.array(vertex_data, dtype='float32')
     route_count = len(vertex_data) // POINTS_PER_ARC
@@ -467,6 +189,8 @@ def main():
 
                         if clean_query == "":
                             search_query  = ""
+                            pulse_origin = None
+                            border_distances = None
                             original_data = dataset.get_airway_data(
                                 np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC)
                             vertex_data   = original_data[0] if isinstance(original_data, tuple) else original_data
@@ -518,6 +242,15 @@ def main():
                                 # Reshape the array so each row is exactly one route (10 points)
                                 routes = vertex_data.reshape(num_routes, POINTS_PER_ARC, 3)
                                 target_np = np.array(target_pos, dtype='float32')
+
+                                # --- PRE-CALCULATE MAP DISTANCES FOR BORDER PULSE ---
+                                pulse_origin = target_pos
+                                target_np = np.array(target_pos, dtype='float32')
+
+                                # Safely reshape border data to (N, 3) and calculate distance from hub to every map point
+                                b_data_3d = border_data.reshape(-1, 3)
+                                border_distances = np.linalg.norm(b_data_3d - target_np, axis=1)
+                                # ---------------------------------------------
 
                                 for i in range(num_routes):
                                     # Check distance from the start point and end point to our hub
@@ -639,7 +372,8 @@ def main():
             glBlendFunc(GL_SRC_ALPHA, GL_ONE)
 
         draw_borders(rot_x, rot_y, zoom_level, show_borders,
-                     border_vbo, border_data, earth_core)
+                     border_vbo, border_data, earth_core,
+                     pulse_origin, border_distances, active_waves)
         draw_flight_routes(base_particle_size, hover_glow, vbo, points_to_draw)
 
         # --- ONLY ANIMATE OUTBOUND FLIGHTS ON FILTERED SEARCH ---
@@ -648,7 +382,7 @@ def main():
 
             # 1. Tick the timer and spawn a new wave if it's time
             wave_spawn_timer += speed
-            if wave_spawn_timer >= 1.5:  # Every 1.5 units, launch a new pulse! (Lower = faster pulses)
+            if wave_spawn_timer >= 2:  # Every 1.5 units, launch a new pulse! (Lower = faster pulses)
                 active_waves.append(0.0)
                 wave_spawn_timer = 0.0
 

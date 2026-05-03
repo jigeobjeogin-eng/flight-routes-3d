@@ -16,7 +16,7 @@ EARTH_CORE          = (0.02, 0.0, 0.03)
 SPHERE              = (0.05, 0.02, 0.05)
 
 # --- Borders ---
-BORDER_LINE         = (1.0,  0.6,  0.7,  0.6)
+BORDER_LINE         = (1.0,  0.6,  0.7,  0.4)
 
 # --- Flight Routes / Particles ---
 ROUTE_GLOW          = (0.9,  0.5,  1.0,  0.4)
