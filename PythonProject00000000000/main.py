@@ -5,12 +5,7 @@ from renderer import *
 
 
 # Search Bar Dimensions — all relative to window size
-
-
-
-
 import math
-
 
 
 def lat_lon_to_xyz(lat, lon, r):
