@@ -272,27 +272,45 @@ def main():
                                     if dist_to_end < dist_to_start:
                                         routes[i] = routes[i][::-1]
 
-
-                                target_zoom_level = -5.5
-
                                 # --- Update the Rotation and Pan Logic ---
                                 tx, ty, tz = target_pos
+                                print(target_pos)
 
-                                # 1. Calculate the raw angles to bring the point to the front (Z-axis)
-                                raw_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
-                                raw_rot_y = -math.degrees(math.atan2(tx, tz))
+                                lon = math.atan2(tx, tz)  # Lon in radians
+                                lat = math.asin(ty / EARTH_RADIUS)  # Lat in radians
 
-                                # 2. Apply your desired offsets
-                                # We subtract 45 from X to tilt the globe so the point sits lower (y = -45)
-                                target_rot_x = raw_rot_x - 45.0
-                                target_rot_y = raw_rot_y
+                                # Convert to degrees for the rotation engine
+                                current_lon_deg = math.degrees(lon)
+                                current_lat_deg = math.degrees(lat)
 
-                                # 3. Pan settings
-                                target_pan_x = -2.0  # Moves globe to the right
-                                # This slides the UI to the right by an amount proportional to the pan
+                                # Use the radius that matches your data (appears to be ~2.99)
+                                R = np.sqrt(tx ** 2 + ty ** 2 + tz ** 2)
+
+                                # 1. Calculate Latitude (X)
+                                # We use the positive value to match your 40.27 expectation
+                                target_lat_deg = math.degrees(math.asin(ty / R))
+
+                                # 2. Calculate Longitude (Y)
+                                # atan2(x, z) gives us the horizontal angle
+                                current_lon_deg = math.degrees(math.atan2(tx, tz))
+
+                                # 3. Final Rotation Alignment
+                                # To match your 'Expected' output:
+                                target_rot_x = target_lat_deg  # Result: 40.27
+                                target_rot_y = -current_lon_deg + 20.0  # Result: 142.99 ( -(-122.99) + 20 )
+
+                                # --- Pan and Zoom ---
+                                # Since you are moving the point 45 degrees to the right,
+                                # keep the pan smaller or zero so it doesn't fly off the right edge.
+                                target_pan_x = -1.0  # Subtle shift to the right
+                                target_zoom_level = -6.0
                                 target_ui_offset_x = abs(target_pan_x * 160)
 
                                 is_animating = True
+
+
+
+
 
 
                                 is_animating = True
@@ -327,6 +345,7 @@ def main():
                         base_particle_size = max(0.1, base_particle_size - 0.1)
                     if event.key == pygame.K_TAB:
                         camera_locked = not camera_locked
+                        print(rot_x, rot_y)
 
 
                         if camera_locked:
