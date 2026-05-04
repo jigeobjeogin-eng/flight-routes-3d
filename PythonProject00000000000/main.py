@@ -1,5 +1,5 @@
 from PythonProject00000000000.data import dataset
-from TextBox import TextBox
+from TextBox import TextBox, SearchBar
 from renderer import *
 
 
@@ -44,6 +44,15 @@ def main():
     # New variables for the map pulse effect
     pulse_origin = None
     border_distances = None
+
+    # New Pygame UI sliding variables
+    ui_offset_x = 0.0
+    target_ui_offset_x = 0.0
+    pan_x = 0.0
+    target_pan_x = 0.0
+    is_tab = False
+
+
 
 
 
@@ -100,23 +109,26 @@ def main():
     def center(i):
         return (W - i)/2 + (i - (i * mult_x))/2
 
-    info_box_w = int(W * 0.25)
-    info_box_h = int(H * 0.171)
-    info_box_y = int(H * 0.2)
+    info_box_w = int(W * 0.25)* mult_x
+    info_box_h = int(H * 0.171)* mult_y
+    info_box_y = int(H * 0.2) * mult_y
 
-    ap_list_w = int(W * 0.269)
-    ap_list_x = W - ap_list_w - int(W * 0.011)
-    ap_list_y = int(H * 0.30)
+    ap_list_w = int(W * 0.1)* mult_x
+    ap_list_x = W - ap_list_w - int(W * 0.1)
+    ap_list_y = int(H * 0.5)* mult_y
 
-    coord_box_w = int(W* 0.45)
-    coord_box_h = int(H * 0.1)
-    coord_box_y = int(H * 0.02)
+    search_box_w = int(W * 0.45)* mult_x
+    search_box_h = int(H * 0.05)* mult_y
+    search_box_y = int(H * 0.09)* mult_y
 
-    info_box = TextBox(x=center(info_box_w), y=info_box_y * mult_y, width=info_box_w * mult_x, height=info_box_h * mult_y,
-                       font=UI_FONT)
-    ap_list  = TextBox(x=ap_list_x, y=ap_list_y, width=ap_list_w, height=0, font=UI_FONT)
-    coord_box = TextBox(x = center(coord_box_w), y = coord_box_y, width = coord_box_w * mult_x, height = coord_box_h * mult_y,
-                        font=UI_FONT)
+    coord_box_w = int(W* 0.45)* mult_x
+    coord_box_h = int(H * 0.1)* mult_y
+    coord_box_y = int(H * 0.02)* mult_y
+
+    info_box = TextBox(x=center(info_box_w), y=info_box_y, width=info_box_w, height=info_box_h,font=UI_FONT)
+    ap_list  = TextBox(x=ap_list_x, y=ap_list_y, width=ap_list_w, height=0, font=AP_FONT)
+    coord_box = TextBox(x = center(coord_box_w), y = coord_box_y, width = coord_box_w, height = coord_box_h,font=UI_FONT)
+    search_bar = SearchBar(x= center(search_box_w), y= search_box_y, width= search_box_w, height=search_box_h, font=UI_FONT, screen_height= H)
 
 
     vertex_data = np.array(vertex_data, dtype='float32')
@@ -139,6 +151,7 @@ def main():
     # Camera: starts unlocked so cursor is visible and search bar is clickable
     camera_locked = False
     camera_just_locked = False
+    switch_lock = False
     center_x      = W // 2
     center_y      = H // 2
     pygame.mouse.set_visible(True)
@@ -161,14 +174,11 @@ def main():
             # --- MOUSE CLICKS ---
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    mx, my = pygame.mouse.get_pos()
-                    if SEARCH_RECT.collidepoint(mx, my):
-                        # Clicked search bar — unlock camera, activate typing
-                        is_typing     = True
-                        camera_locked = False
-                        pygame.mouse.set_visible(True)
+                    # The modular rect handles the slide offset automatically!
+                    if search_bar.rect.collidepoint(event.pos):
+                        search_bar.set_active(True)
                     else:
-                        is_typing = False
+                        search_bar.set_active(False)
 
                 # Scroll Wheel Zoom
                 if event.button == 4: zoom_level += 0.5
@@ -176,28 +186,40 @@ def main():
                 zoom_level = min(-3.5, max(zoom_level, -50.0))
 
             # --- KEYBOARD ---
+
             if event.type == pygame.KEYDOWN:
-                if is_typing:
+                # 1. Check the new SearchBar's active state instead of 'is_typing'
+                if search_bar.is_active:
+
                     if event.key == pygame.K_RETURN:
-                        is_typing   = False
-                        clean_query = search_query.strip()
+                        search_bar.set_active(False)  # Deactivate typing mode
+                        clean_query = search_bar.text.strip()  # Pull text directly from the bar
 
                         if clean_query == "":
-                            search_query  = ""
+                            search_bar.set_text("")
                             pulse_origin = None
                             border_distances = None
                             original_data = dataset.get_airway_data(
                                 np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC)
-                            vertex_data   = original_data[0] if isinstance(original_data, tuple) else original_data
+                            vertex_data = original_data[0] if isinstance(original_data, tuple) else original_data
                             if not isinstance(vertex_data, np.ndarray):
                                 vertex_data = np.array(vertex_data, dtype='float32')
+
                             airport_labels = list(master_airport_labels)
-                            route_count    = len(vertex_data) // POINTS_PER_ARC
+                            route_count = len(vertex_data) // POINTS_PER_ARC
+
                             info_box.set_text(f"Display: Global Network\nTotal Paths: {route_count}")
-                            tx, ty, tz = 0,0,0
+                            ap_list.set_text("")  # Clear the arrivals list
+
+                            tx, ty, tz = 0, 0, 0
                             target_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
                             target_rot_y = -math.degrees(math.atan2(tx, tz))
                             target_zoom_level = -12
+
+                            # Reset globe pan and smoothly slide UI back to the center
+                            target_pan_x = 0.0
+                            target_ui_offset_x = 0.0
+
                             is_animating = True
                             is_filtered = False
 
@@ -205,17 +227,18 @@ def main():
                             vertex_data, arrivals = dataset.get_filtered_airway_data(
                                 np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC, clean_query)
 
-                            route_count      = len(vertex_data) // POINTS_PER_ARC
+                            route_count = len(vertex_data) // POINTS_PER_ARC
                             display_arrivals = "\n  - " + "\n  - ".join(arrivals)
+
                             info_box.set_text(f"Search: {clean_query.upper()}\nTotal Paths: {route_count}")
                             ap_list.set_text(display_arrivals)
                             is_filtered = True
 
                             if len(vertex_data) > 0:
-                                starts        = vertex_data[0::POINTS_PER_ARC]
-                                ends          = vertex_data[POINTS_PER_ARC - 1::POINTS_PER_ARC]
+                                starts = vertex_data[0::POINTS_PER_ARC]
+                                ends = vertex_data[POINTS_PER_ARC - 1::POINTS_PER_ARC]
                                 combined_hubs = np.concatenate((starts, ends), axis=0)
-                                unique_hubs   = np.unique(combined_hubs, axis=0)
+                                unique_hubs = np.unique(combined_hubs, axis=0)
 
                                 airport_labels = []
                                 for pt in unique_hubs:
@@ -234,32 +257,44 @@ def main():
 
                                 # --- ALIGN ALL ROUTES TO START AT THE SEARCHED HUB ---
                                 num_routes = len(vertex_data) // POINTS_PER_ARC
-                                # Reshape the array so each row is exactly one route (10 points)
                                 routes = vertex_data.reshape(num_routes, POINTS_PER_ARC, 3)
                                 target_np = np.array(target_pos, dtype='float32')
 
                                 # --- PRE-CALCULATE MAP DISTANCES FOR BORDER PULSE ---
                                 pulse_origin = target_pos
-                                target_np = np.array(target_pos, dtype='float32')
-
-                                # Safely reshape border data to (N, 3) and calculate distance from hub to every map point
                                 b_data_3d = border_data.reshape(-1, 3)
                                 border_distances = np.linalg.norm(b_data_3d - target_np, axis=1)
-                                # ---------------------------------------------
 
                                 for i in range(num_routes):
-                                    # Check distance from the start point and end point to our hub
                                     dist_to_start = np.linalg.norm(routes[i, 0] - target_np)
                                     dist_to_end = np.linalg.norm(routes[i, -1] - target_np)
 
-                                    # If the end is closer to the hub than the start, reverse the array!
                                     if dist_to_end < dist_to_start:
                                         routes[i] = routes[i][::-1]
 
-                                tx, ty, tz   = target_pos
-                                target_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
-                                target_rot_y = -math.degrees(math.atan2(tx, tz))
-                                target_zoom_level = -3.5
+
+                                target_zoom_level = -5.5
+
+                                # --- Update the Rotation and Pan Logic ---
+                                tx, ty, tz = target_pos
+
+                                # 1. Calculate the raw angles to bring the point to the front (Z-axis)
+                                raw_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
+                                raw_rot_y = -math.degrees(math.atan2(tx, tz))
+
+                                # 2. Apply your desired offsets
+                                # We subtract 45 from X to tilt the globe so the point sits lower (y = -45)
+                                target_rot_x = raw_rot_x - 45.0
+                                target_rot_y = raw_rot_y
+
+                                # 3. Pan settings
+                                target_pan_x = -2.0  # Moves globe to the right
+                                # This slides the UI to the right by an amount proportional to the pan
+                                target_ui_offset_x = abs(target_pan_x * 160)
+
+                                is_animating = True
+
+
                                 is_animating = True
                             else:
                                 airport_labels = []
@@ -271,10 +306,13 @@ def main():
                         glBindBuffer(GL_ARRAY_BUFFER, vbo)
                         glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
 
+                    # 2. Let the SearchBar object handle typing and backspacing internally
                     elif event.key == pygame.K_BACKSPACE:
-                        search_query = search_query[:-1]
-                    elif event.unicode.isprintable() and len(search_query) < 25:
-                        search_query += event.unicode
+                        search_bar.set_text(search_bar.text[:-1])
+
+                    elif event.unicode.isprintable() and len(search_bar.text) < 25:
+                        search_bar.set_text(search_bar.text + event.unicode)
+
 
                 else:
                     # Global hotkeys (only when not typing)
@@ -282,33 +320,59 @@ def main():
                         show_borders = not show_borders
                     if event.key == pygame.K_n:
                         show_labels = not show_labels
-                    if event.key == pygame.K_h:
-                        show_ui = not show_ui
+
                     if event.key == pygame.K_UP:
                         base_particle_size = min(100.0, base_particle_size + 0.1)
                     if event.key == pygame.K_DOWN:
                         base_particle_size = max(0.1, base_particle_size - 0.1)
                     if event.key == pygame.K_TAB:
                         camera_locked = not camera_locked
+
+
                         if camera_locked:
+                            show_ui = False
                             pygame.mouse.set_visible(False)
                             pygame.mouse.set_pos(center_x, center_y)
-                            camera_just_locked = True  # ← ADD THIS
+                            target_pan_x =  0.0
+                            camera_just_locked = True
                         else:
+                            show_ui = True
+                            target_pan_x = -W / 1000
                             pygame.mouse.set_visible(True)
+
+                        if is_filtered:
+                            is_tab = True
+
+
                     if event.key == pygame.K_ESCAPE:
                         # Escape always unlocks camera and shows cursor
                         camera_locked = False
                         is_typing     = False
                         pygame.mouse.set_visible(True)
 
+        if is_tab:
+            pan_x += (target_pan_x - pan_x) * 0.3
+            if abs(target_pan_x - pan_x) < 0.1:
+                pan_x = target_pan_x
+                is_tab = False
+
         # --- Animation / Camera ---
         if is_animating:
 
+
+
+
             show_ui = False
-            rot_x  += (target_rot_x - rot_x) * 0.05
-            diff_y  = (target_rot_y - rot_y + 180) % 360 - 180
-            rot_y  += diff_y * 0.05
+
+            rot_x += (target_rot_x - rot_x) * 0.05
+            diff_y = (target_rot_y - rot_y + 180) % 360 - 180
+            rot_y += diff_y * 0.05
+
+
+            pan_x += (target_pan_x - pan_x) * 0.05
+            ui_offset_x += (target_ui_offset_x - ui_offset_x) * 0.05
+
+
             if zoom_level < -3.5:
                 zoom_level += (target_zoom_level - zoom_level) * 0.1
 
@@ -316,10 +380,11 @@ def main():
                 rot_x        = target_rot_x
                 rot_y        = target_rot_y % 360
                 zoom_level = target_zoom_level
-                is_animating = False
                 show_ui = True
+                is_animating = False
 
         elif camera_locked:
+
 
             if camera_just_locked:  # ← ADD THIS BLOCK
                 camera_just_locked = False  # consume the flag
@@ -341,7 +406,7 @@ def main():
         # ── RENDER ──────────────────────────────────────────────────────────
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
-        glTranslatef(0, 0, zoom_level)
+        glTranslatef(pan_x, 0, zoom_level)
         glRotatef(rot_x, 1, 0, 0)
         glRotatef(rot_y, 0, 1, 0)
 
@@ -405,14 +470,15 @@ def main():
                     zoom_label_threshold, max_labels)
 
         if show_ui:
-            draw_ui(W, H, search_query, is_typing)
+            search_bar.update(frame_dx, frame_dy, target_ui_offset_x)
+            search_bar.draw(W, H)
             info_box.draw(W, H)
-            info_box.update_shake(frame_dx, frame_dy)
+            info_box.update(frame_dx, frame_dy, target_ui_offset_x)
             coord_box.draw(W,H)
-            coord_box.update_shake(frame_dx, frame_dy)
+            coord_box.update(frame_dx, frame_dy, target_ui_offset_x)
             coord_box.set_text(f"{(get_screen_center_lat_lon(rot_x, rot_y)[0]):.5f}° N , {(get_screen_center_lat_lon(rot_x, rot_y)[1]):.5f}° W | %{get_zoom_scale_factor(zoom_level):.0f}")
             if is_filtered:
-                ap_list.update_shake(frame_dx, frame_dy)
+                ap_list.update(frame_dx, frame_dy)
                 ap_list.draw(W, H)
 
         glClearColor(*colors.BACKGROUND)

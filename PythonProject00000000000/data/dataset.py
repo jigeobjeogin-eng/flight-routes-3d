@@ -180,7 +180,7 @@ def get_filtered_airway_data(np_module, lat_lon_to_xyz, r, points_per_arc, searc
 
 
 
-def get_world_borders(lat_lon_to_3d_func, earth_radius, filepath='/home/cenk/PycharmProjects/transportation/PythonProject00000000000/data/countries(3).geojson'):
+def get_world_borders(lat_lon_to_3d_func, earth_radius, filepath='PythonProject00000000000/data/countries(3).geojson'):
     """
     Parses a GeoJSON file and converts lat/lon coordinates into 3D sphere vertices.
     """
