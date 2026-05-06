@@ -1,6 +1,8 @@
 from PythonProject00000000000.data import dataset
 from TextBox import TextBox, SearchBar
 from renderer import *
+import sys
+
 
 
 
@@ -110,20 +112,20 @@ def main():
         return (W - i)/2 + (i - (i * mult_x))/2
 
     info_box_w = int(W * 0.25)* mult_x
-    info_box_h = int(H * 0.171)* mult_y
-    info_box_y = int(H * 0.2) * mult_y
+    info_box_h = int(H * 0.01)* mult_y
+    info_box_y = int(H * 0.1) * mult_y
 
     ap_list_w = int(W * 0.1)* mult_x
     ap_list_x = W - ap_list_w - int(W * 0.1)
     ap_list_y = int(H * 0.5)* mult_y
 
-    search_box_w = int(W * 0.45)* mult_x
+    search_box_w = int(W * 0.2)* mult_x
     search_box_h = int(H * 0.05)* mult_y
     search_box_y = int(H * 0.09)* mult_y
 
     coord_box_w = int(W* 0.45)* mult_x
-    coord_box_h = int(H * 0.1)* mult_y
-    coord_box_y = int(H * 0.02)* mult_y
+    coord_box_h = int(H * 0.01)* mult_y
+    coord_box_y = int(H * 0.01)* mult_y
 
     info_box = TextBox(x=center(info_box_w), y=info_box_y, width=info_box_w, height=info_box_h,font=UI_FONT)
     ap_list  = TextBox(x=ap_list_x, y=ap_list_y, width=ap_list_w, height=0, font=AP_FONT)
@@ -164,7 +166,9 @@ def main():
     frame_dx = 0
     frame_dy = 0
 
-    while True:
+    running = True
+
+    while running:
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -227,8 +231,20 @@ def main():
                             vertex_data, arrivals = dataset.get_filtered_airway_data(
                                 np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC, clean_query)
 
+
+
                             route_count = len(vertex_data) // POINTS_PER_ARC
-                            display_arrivals = "\n  - " + "\n  - ".join(arrivals)
+
+
+                            MAX_CHARS = 25
+
+
+                            truncated_arrivals = [
+                                (a[:MAX_CHARS] + "...") if len(a) > MAX_CHARS else a
+                                for a in arrivals
+                            ]
+
+                            display_arrivals = "\n - " + "\n - ".join(truncated_arrivals)
 
                             info_box.set_text(f"Search: {clean_query.upper()}\nTotal Paths: {route_count}")
                             ap_list.set_text(display_arrivals)
@@ -304,7 +320,7 @@ def main():
                                 # keep the pan smaller or zero so it doesn't fly off the right edge.
                                 target_pan_x = -1.0  # Subtle shift to the right
                                 target_zoom_level = -6.0
-                                target_ui_offset_x = abs(target_pan_x * 160)
+                                target_ui_offset_x = target_pan_x * W/6
 
                                 is_animating = True
 
@@ -345,9 +361,6 @@ def main():
                         base_particle_size = max(0.1, base_particle_size - 0.1)
                     if event.key == pygame.K_TAB:
                         camera_locked = not camera_locked
-                        print(rot_x, rot_y)
-
-
                         if camera_locked:
                             show_ui = False
                             pygame.mouse.set_visible(False)
@@ -362,12 +375,9 @@ def main():
                         if is_filtered:
                             is_tab = True
 
-
-                    if event.key == pygame.K_ESCAPE:
-                        # Escape always unlocks camera and shows cursor
-                        camera_locked = False
-                        is_typing     = False
-                        pygame.mouse.set_visible(True)
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
+                            running = False
 
         if is_tab:
             pan_x += (target_pan_x - pan_x) * 0.3
@@ -503,6 +513,10 @@ def main():
         glClearColor(*colors.BACKGROUND)
         pygame.display.flip()
         clock.tick(60)
+    pygame.quit()
+    sys.exit()
+
+
 
 
 if __name__ == "__main__":

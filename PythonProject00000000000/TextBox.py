@@ -2,6 +2,7 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import math
+from config import *
 
 #9.0
 class TextBox:
@@ -24,9 +25,9 @@ class TextBox:
         self.shake_y = 0.0
         self.slide_x = 0.0
 
-        self.bg_color = (0.05, 0.05, 0.05, 0.8)
-        self.border_color = (0.4, 0.4, 0.4, 1.0)
-        self.text_color = (255, 255, 255, 255)
+        self.bg_color = (colors.INACTIVE_BG)
+        self.border_color = (colors.INACTIVE_OUTLINE)
+        self.text_color = (colors.TEXT_DEFAULT)
 
         pygame.font.init()
         self.font = font
@@ -93,7 +94,7 @@ class TextBox:
         glPushMatrix()
         glLoadIdentity()
 
-        # 👉 THE MAGIC: Apply the offset to the entire UI block instantly
+        # Apply shake/slide translation
         glTranslatef(self.shake_x + self.slide_x, self.shake_y, 0.0)
 
         glDisable(GL_DEPTH_TEST)
@@ -119,30 +120,42 @@ class TextBox:
         glVertex2f(self.x, self.y + self.height)
         glEnd()
 
-        # --- 4. Draw Text in Columns ---
+        # --- 4. Draw Centered Text in Columns ---
         if self.text:
             lines = self.text.split('\n')
             line_spacing = self.font.get_height() + 1
 
-            start_x = self.x + self.current_width/self.base_width
-            start_y = self.y + self.height - line_spacing - 5
+            # This is our vertical starting point (top of the box)
+            top_margin = 5
+            base_y_start = self.y + self.height - line_spacing - top_margin
 
             for i, line in enumerate(lines):
-                if not line:
+                if not line.strip():  # Skip empty lines
                     continue
 
                 col = i // self.lines_per_col
                 row = i % self.lines_per_col
 
-                current_start_x = start_x + (col * self.base_width)
-                current_start_y = start_y - (row * line_spacing)
-
+                # 👉 STEP 1: Render surface to find its width
                 text_surface = self.font.render(line, True, self.text_color)
+                tw = text_surface.get_width()
+                th = text_surface.get_height()
+
+                # 👉 STEP 2: Calculate Horizontal Center
+                # Start at the column's left edge, add half the column width,
+                # then subtract half the text width.
+                col_left_edge = self.x + (col * self.base_width)
+                current_start_x = col_left_edge + (self.base_width - tw) / 2.0
+
+                # STEP 3: Vertical Position
+                current_start_y = base_y_start - (row * line_spacing)
+
+                # Convert surface to OpenGL format
                 text_data = pygame.image.tostring(text_surface, "RGBA", True)
 
+                # Move the raster position and draw
                 glRasterPos2d(current_start_x, current_start_y)
-                glDrawPixels(text_surface.get_width(), text_surface.get_height(),
-                             GL_RGBA, GL_UNSIGNED_BYTE, text_data)
+                glDrawPixels(tw, th, GL_RGBA, GL_UNSIGNED_BYTE, text_data)
 
         # --- 5. Restore 3D Mode ---
         glEnable(GL_DEPTH_TEST)
@@ -152,9 +165,6 @@ class TextBox:
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
         glPopMatrix()
-
-
-
 
 class SearchBar:
     def __init__(self, x, y, width, height, font, screen_height):
@@ -180,11 +190,11 @@ class SearchBar:
         self.slide_x = 0.0
 
         # Colors (Update these to match your `colors` module if needed)
-        self.active_bg = (0.1, 0.1, 0.15, 0.9)
-        self.inactive_bg = (0.05, 0.05, 0.05, 0.8)
-        self.active_outline = (0.3, 0.6, 1.0, 1.0)
-        self.inactive_outline = (0.2, 0.2, 0.2, 1.0)
-        self.text_color = (255, 255, 255, 255)
+        self.active_bg = (colors.ACTIVE_BG)
+        self.inactive_bg = (colors.INACTIVE_BG)
+        self.active_outline = (colors.ACTIVE_OUTLINE)
+        self.inactive_outline = (colors.INACTIVE_OUTLINE)
+        self.text_color = (colors.TEXT_DEFAULT)
         self.placeholder_color = (120, 120, 120, 255)
 
     def set_active(self, active_state):

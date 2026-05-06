@@ -9,8 +9,8 @@ from config import *
 pygame.font.init()
 
 W, H = WINDOW_SIZE
-UI_FONT = pygame.font.SysFont('Consolas', int(18 * H/1440 ))
-AP_FONT = pygame.font.SysFont('Consolas', int(18 * H/1440) - 2)
+UI_FONT = pygame.font.Font('PythonProject00000000000/data/font.ttf', int(24 * H/1440 ))
+AP_FONT = pygame.font.Font('PythonProject00000000000/data/font.ttf', int(18 * H/1440) - 2)
 
 
 def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
@@ -71,7 +71,7 @@ def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
                 # Get smaller and more transparent the further back it goes
                 glPointSize(1)
                 alpha = 1.0 - (i * 0.2)
-                glColor4f(0.2, 0.2, 0.6, alpha)  # Blueish fade
+                glColor4f(*colors.ROUTE_PULSE, alpha)  # Blueish fade
 
                 glVertexPointer(3, GL_FLOAT, 0, streak_dots)
                 glDrawArrays(GL_POINTS, 0, len(streak_dots))
@@ -272,60 +272,4 @@ def draw_borders(rot_x, rot_y, zoom_level, show_border,
 
 
 
-#SEARCH BAR CONFIG
-BAR_WIDTH    = int(W * 0.307)
-BAR_HEIGHT   = int(H * 0.057)
-BAR_X        = (W - BAR_WIDTH) // 2
-BAR_Y_MARGIN = int(H * 0.029)
-SEARCH_RECT = pygame.Rect(BAR_X, BAR_Y_MARGIN, BAR_WIDTH, BAR_HEIGHT)
 
-def draw_ui(screen_width, screen_height, search_text, is_active):
-    glMatrixMode(GL_PROJECTION)
-    glPushMatrix()
-    glLoadIdentity()
-    gluOrtho2D(0, screen_width, 0, screen_height)
-
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glLoadIdentity()
-
-    glDisable(GL_DEPTH_TEST)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    # In OpenGL ortho with gluOrtho2D(0,W,0,H): y=0 is BOTTOM, y=H is TOP.
-    # Pygame mouse y=0 is TOP. So we flip: gl_y = H - pygame_y - height
-    gl_bar_y = screen_height - BAR_Y_MARGIN - BAR_HEIGHT
-
-    # Background
-    glColor4f(*(colors.BAR_ACTIVE_BG if is_active else colors.BAR_INACTIVE_BG))
-    glBegin(GL_QUADS)
-    glVertex2f(BAR_X,             gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y + BAR_HEIGHT)
-    glVertex2f(BAR_X,             gl_bar_y + BAR_HEIGHT)
-    glEnd()
-
-    # Outline
-    glColor4f(*(colors.BAR_ACTIVE_OUTLINE if is_active else colors.BAR_INACTIVE_OUTLINE))
-    glLineWidth(2.0)
-    glBegin(GL_LINE_LOOP)
-    glVertex2f(BAR_X,             gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y)
-    glVertex2f(BAR_X + BAR_WIDTH, gl_bar_y + BAR_HEIGHT)
-    glVertex2f(BAR_X,             gl_bar_y + BAR_HEIGHT)
-    glEnd()
-
-    # Text — vertically centred
-    display_text = search_text + ("_" if is_active else "")
-    if not search_text and not is_active:
-        display_text = "Click here to search airport (e.g. JFK)..."
-    text_y = gl_bar_y + int(BAR_HEIGHT * 0.28)
-    draw_text_2d(BAR_X + int(BAR_WIDTH * 0.037), text_y, display_text, UI_FONT)
-
-    glEnable(GL_DEPTH_TEST)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-    glMatrixMode(GL_PROJECTION)
-    glPopMatrix()
-    glMatrixMode(GL_MODELVIEW)
-    glPopMatrix()

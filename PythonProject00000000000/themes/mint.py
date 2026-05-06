@@ -19,9 +19,10 @@ SPHERE              = (0.01, 0.05, 0.06)
 # Crisp ice-blue lines
 BORDER_LINE         = (0.5,  0.9,  0.8,  0.5)
 
+
 # --- Flight Routes / Particles ---
 ROUTE_GLOW          = (0.4,  1.0,  0.7,  0.4)
-
+ROUTE_PULSE         =(1,1,1)
 # --- Airport Hub Dots ---
 HUB_DOT             = (0.8,  1.0,  0.95, 1.0)
 
