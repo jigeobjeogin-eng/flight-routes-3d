@@ -5,11 +5,11 @@
 BACKGROUND = (0.0, 0.04, 0.05, 1.0)
 
 # --- UI / Search Bar ---
-BAR_ACTIVE_BG       = (0.1,  0.25, 0.25, 0.9)
-BAR_INACTIVE_BG     = (0.02, 0.1,  0.12, 0.8)
-BAR_ACTIVE_OUTLINE  = (0.6,  1.0,  0.9,  1.0)
-BAR_INACTIVE_OUTLINE= (0.3,  0.5,  0.5,  1.0)
-TEXT_DEFAULT        = (240,  255,  250,  255)
+ACTIVE_BG       = (0.5,  0.9,  0.8,  0.5)  # Dark chocolate tint
+INACTIVE_BG     = (0.5,  0.9,  0.8,  0.05)
+ACTIVE_OUTLINE  = (0.5,  0.9,  0.8,  1)  # Polished Gold
+INACTIVE_OUTLINE= (0.5,  0.9,  0.8,  0.5)  # Muted Bronze
+TEXT_DEFAULT         = (240,  255,  250,  255)
 
 # --- Earth / Globe ---
 EARTH_CORE          = (0.0,  0.02, 0.03)

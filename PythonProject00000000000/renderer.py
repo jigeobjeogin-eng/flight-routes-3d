@@ -1,4 +1,4 @@
-import pygame
+
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -6,11 +6,8 @@ import numpy as np
 from config import *
 
 
-pygame.font.init()
 
-W, H = WINDOW_SIZE
-UI_FONT = pygame.font.Font('PythonProject00000000000/data/font.ttf', int(24 * H/1440 ))
-AP_FONT = pygame.font.Font('PythonProject00000000000/data/font.ttf', int(18 * H/1440) - 2)
+
 
 
 def draw_shining_dots(vertex_data, distance_flown, points_per_arc):

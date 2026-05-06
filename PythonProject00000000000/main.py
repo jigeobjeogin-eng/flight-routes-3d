@@ -2,11 +2,6 @@ from PythonProject00000000000.data import dataset
 from TextBox import TextBox, SearchBar
 from renderer import *
 import sys
-
-
-
-
-# Search Bar Dimensions — all relative to window size
 import math
 
 
@@ -111,7 +106,7 @@ def main():
     def center(i):
         return (W - i)/2 + (i - (i * mult_x))/2
 
-    info_box_w = int(W * 0.25)* mult_x
+    info_box_w = int(W * 0.15)* mult_x
     info_box_h = int(H * 0.01)* mult_y
     info_box_y = int(H * 0.1) * mult_y
 
@@ -123,7 +118,7 @@ def main():
     search_box_h = int(H * 0.05)* mult_y
     search_box_y = int(H * 0.09)* mult_y
 
-    coord_box_w = int(W* 0.45)* mult_x
+    coord_box_w = int(W* 0.2)* mult_x
     coord_box_h = int(H * 0.01)* mult_y
     coord_box_y = int(H * 0.01)* mult_y
 
@@ -146,14 +141,11 @@ def main():
     show_borders       = True
     show_labels        = True
     show_ui            = True
-    is_typing          = False
     is_filtered        = False
-    search_query       = ""
 
     # Camera: starts unlocked so cursor is visible and search bar is clickable
     camera_locked = False
     camera_just_locked = False
-    switch_lock = False
     center_x      = W // 2
     center_y      = H // 2
     pygame.mouse.set_visible(True)
@@ -178,7 +170,6 @@ def main():
             # --- MOUSE CLICKS ---
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    # The modular rect handles the slide offset automatically!
                     if search_bar.rect.collidepoint(event.pos):
                         search_bar.set_active(True)
                     else:
@@ -295,9 +286,7 @@ def main():
                                 lon = math.atan2(tx, tz)  # Lon in radians
                                 lat = math.asin(ty / EARTH_RADIUS)  # Lat in radians
 
-                                # Convert to degrees for the rotation engine
-                                current_lon_deg = math.degrees(lon)
-                                current_lat_deg = math.degrees(lat)
+
 
                                 # Use the radius that matches your data (appears to be ~2.99)
                                 R = np.sqrt(tx ** 2 + ty ** 2 + tz ** 2)
@@ -413,11 +402,9 @@ def main():
                 is_animating = False
 
         elif camera_locked:
-
-
-            if camera_just_locked:  # ← ADD THIS BLOCK
-                camera_just_locked = False  # consume the flag
-                frame_dx = 0  # throw away the snap-frame delta
+            if camera_just_locked:
+                camera_just_locked = False
+                frame_dx = 0
                 frame_dy = 0
             else:
                 mx, my = pygame.mouse.get_pos()
