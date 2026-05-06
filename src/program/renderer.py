@@ -78,12 +78,6 @@ def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
 
 
 def get_zoom_scale_factor(current_zoom, base_zoom=-40.0):
-    """
-    Returns a scale multiplier based on the zoom distance.
-    If you are at the base zoom, it returns 1.0.
-    If you zoom out twice as far, it returns 0.5.
-    If you zoom in twice as close, it returns 2.0.
-    """
     # Prevent division by zero just in case camera clips inside the exact center
     if current_zoom == 0:
         return 1.0

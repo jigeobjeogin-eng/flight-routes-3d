@@ -1,4 +1,4 @@
-from PythonProject00000000000.data import dataset
+from program.data import dataset
 from TextBox import TextBox, SearchBar
 from renderer import *
 import sys
