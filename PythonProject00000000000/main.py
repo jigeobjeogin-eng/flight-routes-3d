@@ -100,27 +100,26 @@ def main():
     gluQuadricNormals(earth_core, GLU_SMOOTH)
 
     # TextBox positions — proportional to window
-    mult_x = W / 2560
-    mult_y = H / 1440
+
 
     def center(i):
-        return (W - i)/2 + (i - (i * mult_x))/2
+        return (W - i)/2 + (i - (i))/2
 
-    info_box_w = int(W * 0.15)* mult_x
-    info_box_h = int(H * 0.01)* mult_y
-    info_box_y = int(H * 0.1) * mult_y
+    info_box_w = int(W * 0.2)
+    info_box_h = int(H * 0.01)
+    info_box_y = int(H * 0.1)
 
-    ap_list_w = int(W * 0.1)* mult_x
+    ap_list_w = int(W * 0.1)
     ap_list_x = W - ap_list_w - int(W * 0.1)
-    ap_list_y = int(H * 0.5)* mult_y
+    ap_list_y = int(H * 0.5)
 
-    search_box_w = int(W * 0.2)* mult_x
-    search_box_h = int(H * 0.05)* mult_y
-    search_box_y = int(H * 0.09)* mult_y
+    search_box_w = int(W * 0.2)
+    search_box_h = int(H * 0.05)
+    search_box_y = int(H * 0.09)
 
-    coord_box_w = int(W* 0.2)* mult_x
-    coord_box_h = int(H * 0.01)* mult_y
-    coord_box_y = int(H * 0.01)* mult_y
+    coord_box_w = int(W* 0.2)
+    coord_box_h = int(H * 0.01)
+    coord_box_y = int(H * 0.01)
 
     info_box = TextBox(x=center(info_box_w), y=info_box_y, width=info_box_w, height=info_box_h,font=UI_FONT)
     ap_list  = TextBox(x=ap_list_x, y=ap_list_y, width=ap_list_w, height=0, font=AP_FONT)

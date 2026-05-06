@@ -5,6 +5,131 @@ import math
 from config import *
 
 #9.0
+
+
+class SearchBar:
+    def __init__(self, x, y, width, height, font, screen_height):
+        # Base Dimensions & Position (Pygame Top-Left Coordinates)
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.screen_height = screen_height
+
+        # Text & State
+        self.text = ""
+        self.is_active = False
+        pygame.font.init()
+        self.font = font
+
+        # Collision Rect (Use this in your main loop for MOUSEBUTTONDOWN checks)
+        self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+
+        # --- Shake & Slide Physics Variables ---
+        self.shake_x = 0.0
+        self.shake_y = 0.0
+        self.slide_x = 0.0
+
+        # Colors (Update these to match your `colors` module if needed)
+        self.active_bg = (0.1, 0.1, 0.15, 0.9)
+        self.inactive_bg = (0.05, 0.05, 0.05, 0.8)
+        self.active_outline = (0.3, 0.6, 1.0, 1.0)
+        self.inactive_outline = (0.2, 0.2, 0.2, 1.0)
+        self.text_color = (255, 255, 255, 255)
+        self.placeholder_color = (120, 120, 120, 255)
+
+    def set_active(self, active_state):
+        self.is_active = active_state
+
+    def set_text(self, new_text):
+        self.text = str(new_text)
+
+    def update(self, dx=0.0, dy=0.0, target_slide_x=0.0):
+        """Handles both mouse-based shake inertia and smooth UI sliding."""
+        # 1. Mouse Shake Physics
+        target_shake_x = -dx * 0.4
+        target_shake_y = dy * 0.4
+
+        self.shake_x += (target_shake_x - self.shake_x) * 0.02
+        self.shake_y += (target_shake_y - self.shake_y) * 0.02
+
+        # 2. Dashboard Slide Physics
+        self.slide_x += (target_slide_x - self.slide_x) * 0.05
+
+        # Update the collision rect's X position so it remains clickable after sliding!
+        self.rect.x = self.x + int(self.slide_x)
+
+    def draw(self, screen_width, screen_height):
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        gluOrtho2D(0, screen_width, 0, screen_height)
+
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+
+        # 👉 Apply BOTH the shake offset and the slide offset to the UI block
+        glTranslatef(self.shake_x + self.slide_x, self.shake_y, 0.0)
+
+        glDisable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        # Convert Pygame Y (Top=0) to OpenGL Y (Bottom=0)
+        gl_bar_y = screen_height - self.y - self.height
+
+        # --- 1. Draw Background ---
+        bg_color = self.active_bg if self.is_active else self.inactive_bg
+        glColor4f(*bg_color)
+        glBegin(GL_QUADS)
+        glVertex2f(self.x, gl_bar_y)
+        glVertex2f(self.x + self.width, gl_bar_y)
+        glVertex2f(self.x + self.width, gl_bar_y + self.height)
+        glVertex2f(self.x, gl_bar_y + self.height)
+        glEnd()
+
+        # --- 2. Draw Outline ---
+        outline_color = self.active_outline if self.is_active else self.inactive_outline
+        glColor4f(*outline_color)
+        glLineWidth(2.0)
+        glBegin(GL_LINE_LOOP)
+        glVertex2f(self.x, gl_bar_y)
+        glVertex2f(self.x + self.width, gl_bar_y)
+        glVertex2f(self.x + self.width, gl_bar_y + self.height)
+        glVertex2f(self.x, gl_bar_y + self.height)
+        glEnd()
+
+        # --- 3. Draw Text ---
+        display_text = self.text + ("_" if self.is_active else "")
+        current_text_color = self.text_color
+
+        if not self.text and not self.is_active:
+            display_text = "Click here to search airport (e.g. JFK)..."
+            current_text_color = self.placeholder_color
+
+        # Render text to a Pygame surface and blast it to OpenGL (matching TextBox logic)
+        text_surface = self.font.render(display_text, True, current_text_color)
+        text_data = pygame.image.tostring(text_surface, "RGBA", True)
+
+        # Calculate text position (Centered vertically, slightly offset from left edge)
+        text_x = self.x + int(self.width * 0.037)
+        text_y = gl_bar_y + int(self.height * 0.28)
+
+        glRasterPos2d(text_x, text_y)
+        glDrawPixels(text_surface.get_width(), text_surface.get_height(),
+                     GL_RGBA, GL_UNSIGNED_BYTE, text_data)
+
+        # --- 4. Restore 3D Mode ---
+        glEnable(GL_DEPTH_TEST)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
+
+
 class TextBox:
     def __init__(self, x, y, width, height, text="", font=12, screen_height=1440):
         self.base_width = width
@@ -165,6 +290,7 @@ class TextBox:
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
         glPopMatrix()
+
 
 class SearchBar:
     def __init__(self, x, y, width, height, font, screen_height):
