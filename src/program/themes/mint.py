@@ -1,14 +1,14 @@
-# colors.py — Global Transportation Tree Color Palette (Frosty Mint Edition ❄️)
+# colors.py — Global Transportation Tree Color Palette
 # All colors are defined as (R, G, B) or (R, G, B, A) tuples
 
 # --- BACKGROUND ---
 BACKGROUND = (0.0, 0.04, 0.05, 1.0)
 
 # --- UI / Search Bar ---
-ACTIVE_BG       = (0.5,  0.9,  0.8,  0.5)  # Dark chocolate tint
+ACTIVE_BG       = (0.5,  0.9,  0.8,  0.5)
 INACTIVE_BG     = (0.5,  0.9,  0.8,  0.05)
-ACTIVE_OUTLINE  = (0.5,  0.9,  0.8,  1)  # Polished Gold
-INACTIVE_OUTLINE= (0.5,  0.9,  0.8,  0.5)  # Muted Bronze
+ACTIVE_OUTLINE  = (0.5,  0.9,  0.8,  1)
+INACTIVE_OUTLINE= (0.5,  0.9,  0.8,  0.5)
 TEXT_DEFAULT         = (240,  255,  250,  255)
 
 # --- Earth / Globe ---
@@ -16,7 +16,6 @@ EARTH_CORE          = (0.0,  0.02, 0.03)
 SPHERE              = (0.01, 0.05, 0.06)
 
 # --- Borders ---
-# Crisp ice-blue lines
 BORDER_LINE         = (0.5,  0.9,  0.8,  0.5)
 
 

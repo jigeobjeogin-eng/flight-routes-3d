@@ -68,7 +68,7 @@ def draw_shining_dots(vertex_data, distance_flown, points_per_arc):
                 # Get smaller and more transparent the further back it goes
                 glPointSize(1)
                 alpha = 1.0 - (i * 0.2)
-                glColor4f(*colors.ROUTE_PULSE, alpha)  # Blueish fade
+                glColor4f(*colors.ROUTE_PULSE,alpha)  # Blueish fade
 
                 glVertexPointer(3, GL_FLOAT, 0, streak_dots)
                 glDrawArrays(GL_POINTS, 0, len(streak_dots))

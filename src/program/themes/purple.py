@@ -1,30 +1,21 @@
-# colors.py — Global Transportation Tree Color Palette (Pooki Edition 🎀)
-# All colors are defined as (R, G, B) or (R, G, B, A) tuples
+BACKGROUND = (0.02, 0.0, 0.05, 1.0)
 
-# --- BACKGROUND ---
-BACKGROUND = (0.05, 0.02, 0.05, 1.0)
+ACTIVE_BG        = (0.1, 0.0, 0.15, 0.9)
+INACTIVE_BG      = (0.05, 0.02, 0.08, 0.8)
+ACTIVE_OUTLINE   = (0.7, 0.0, 1.0, 1.0)
+INACTIVE_OUTLINE = (0.2, 0.1, 0.3, 1.0)
+TEXT_DEFAULT     = (215,  145,  255,  255)
 
-# --- UI / Search Bar ---
-BAR_ACTIVE_BG       = (0.25, 0.15, 0.25, 0.9)
-BAR_INACTIVE_BG     = (0.12, 0.08, 0.12, 0.8)
-BAR_ACTIVE_OUTLINE  = (1.0,  0.7,  0.9,  1.0)
-BAR_INACTIVE_OUTLINE= (0.6,  0.4,  0.6,  1.0)
-TEXT_DEFAULT        = (255,  240,  245,  255)
+EARTH_CORE          = (0.01, 0.0, 0.02)
+SPHERE              = (0.03, 0.0, 0.05)
 
-# --- Earth / Globe ---
-EARTH_CORE          = (0.02, 0.0, 0.03)
-SPHERE              = (0.05, 0.02, 0.05)
+BORDER_LINE         = (0.3, 0.0, 0.5, 0.4)
 
-# --- Borders ---
-BORDER_LINE         = (1.0,  0.6,  0.7,  0.4)
+ROUTE_GLOW          = (0.5, 0.0, 0.8, 0.2)
+ROUTE_PULSE         = (0.8, 0.2, 1.0)
 
-# --- Flight Routes / Particles ---
-ROUTE_GLOW          = (0.9,  0.5,  1.0,  0.4)
+HUB_DOT             = (0.9, 0.6, 1.0, 1.0)
 
-# --- Airport Hub Dots ---
-HUB_DOT             = (1.0,  0.9,  1.0,  1.0)
-
-# --- Labels ---
-LABEL_TINT          = (1.0,  0.95, 1.0,  1.0)
-LABEL_TEXT_FG       = (255,  245,  250)
-LABEL_TEXT_BG       = (60,   30,   60)
+LABEL_TINT          = (0.3,  0.3,  0.9, 0.6)
+LABEL_TEXT_FG       = (200,  100,  212)
+LABEL_TEXT_BG       = (150,   100,   50)
