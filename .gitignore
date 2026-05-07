@@ -1,0 +1,6 @@
+.venv
+._pycache\
+.PythonProject00000000000/__pycache__
+themes\__pycache__
+src/program/__pycache__
+src/program/data/__pycache__
