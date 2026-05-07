@@ -15,7 +15,19 @@ def lat_lon_to_xyz(lat, lon, r):
 
 
 
+try:
+    if WINDOW_SIZE == 0:
+        W, H = info.current_w, info.current_h
+        WINDOW_SIZE = (W, H)
+    else:
+        W, H = WINDOW_SIZE
+except:
+    print("invalid border size")
 
+UI_FONT = pygame.font.Font(FONT_PATH, int(24 * H/1440 ))
+AP_FONT = pygame.font.Font(FONT_PATH, int(10 * H/1440))
+
+EARTH_RADIUS = 3.0
 
 def main():
     pygame.init()

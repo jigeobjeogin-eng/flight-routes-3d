@@ -1,21 +1,24 @@
 import pygame
 import os
+pygame.font.init()
+pygame.display.init()
+info = pygame.display.Info()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- Project Config ---
-WINDOW_SIZE = (1280, 720)
-EARTH_RADIUS = 3.0
-POINTS_PER_ARC = 10 #line resolution
-import themes.gold as colors
+POINTS_PER_ARC = 10 #line resolution, +50 might take long to load
+WINDOW_SIZE = 0 #type zero for fullscreen , for desired size use format the (width , height)
+FONT_PATH = os.path.join(BASE_DIR, 'data', 'font.ttf') #switch font.tff with your own font name
+import themes.gold as colors #chose between default, gold, inferno, mint, purple
+#-----------------------
 
-pygame.font.init()
 
-W, H = WINDOW_SIZE
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FONT_PATH = os.path.join(BASE_DIR, 'data', 'font.ttf')
 
-UI_FONT = pygame.font.Font(FONT_PATH, int(24 * H/1440 ))
-AP_FONT = pygame.font.Font(FONT_PATH, int(10 * H/1440))
+
+
+
+
 
 
 
