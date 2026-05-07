@@ -33,6 +33,24 @@ import themes.gold as colors
 ```
 Themes: default, gold, inferno, mint, purple
 
+## DEPENDENCIES
+PYTHON 3.13
+
+To install core libraries, run
+```commandline
+pip install -r requirements.txt
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 

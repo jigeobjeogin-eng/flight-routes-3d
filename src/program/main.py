@@ -1,8 +1,10 @@
-from program.data import dataset
+import src.program.data.dataset as dataset
 from TextBox import TextBox, SearchBar
 from renderer import *
 import sys
 import math
+
+
 
 
 def lat_lon_to_xyz(lat, lon, r):
@@ -27,7 +29,7 @@ except:
 UI_FONT = pygame.font.Font(FONT_PATH, int(24 * H/1440 ))
 AP_FONT = pygame.font.Font(FONT_PATH, int(10 * H/1440))
 
-EARTH_RADIUS = 3.0
+
 
 def main():
     pygame.init()
@@ -43,14 +45,12 @@ def main():
     zoom_dot_threshold   = -15.0
     zoom_label_threshold = -18.0
 
-    # NEW: Flight animation tracker
+    # Flight animation tracker
     flight_tick = 0
-    distance_flown = 0.0
-    active_waves = [0.0]  # A list to track multiple waves flying at the same time
-    wave_spawn_timer = 0.0  # A timer to trigger the next wave
+    active_waves = [0.0]
+    wave_spawn_timer = 0.0
 
     #BORDER PULSE
-    # New variables for the map pulse effect
     pulse_origin = None
     border_distances = None
 
@@ -154,7 +154,7 @@ def main():
     show_ui            = True
     is_filtered        = False
 
-    # Camera: starts unlocked so cursor is visible and search bar is clickable
+    # Camera
     camera_locked = False
     camera_just_locked = False
     center_x      = W // 2
@@ -194,12 +194,12 @@ def main():
             # --- KEYBOARD ---
 
             if event.type == pygame.KEYDOWN:
-                # 1. Check the new SearchBar's active state instead of 'is_typing'
+
                 if search_bar.is_active:
 
                     if event.key == pygame.K_RETURN:
-                        search_bar.set_active(False)  # Deactivate typing mode
-                        clean_query = search_bar.text.strip()  # Pull text directly from the bar
+                        search_bar.set_active(False)
+                        clean_query = search_bar.text.strip()
 
                         if clean_query == "":
                             search_bar.set_text("")
@@ -215,14 +215,14 @@ def main():
                             route_count = len(vertex_data) // POINTS_PER_ARC
 
                             info_box.set_text(f"Display: Global Network\nTotal Paths: {route_count}")
-                            ap_list.set_text("")  # Clear the arrivals list
+                            ap_list.set_text("")
 
                             tx, ty, tz = 0, 0, 0
                             target_rot_x = math.degrees(math.asin(ty / EARTH_RADIUS))
                             target_rot_y = -math.degrees(math.atan2(tx, tz))
                             target_zoom_level = -12
 
-                            # Reset globe pan and smoothly slide UI back to the center
+
                             target_pan_x = 0.0
                             target_ui_offset_x = 0.0
 
@@ -294,8 +294,7 @@ def main():
                                 tx, ty, tz = target_pos
                                 print(target_pos)
 
-                                lon = math.atan2(tx, tz)  # Lon in radians
-                                lat = math.asin(ty / EARTH_RADIUS)  # Lat in radians
+
 
 
 
@@ -303,22 +302,21 @@ def main():
                                 R = np.sqrt(tx ** 2 + ty ** 2 + tz ** 2)
 
                                 # 1. Calculate Latitude (X)
-                                # We use the positive value to match your 40.27 expectation
+
                                 target_lat_deg = math.degrees(math.asin(ty / R))
 
                                 # 2. Calculate Longitude (Y)
-                                # atan2(x, z) gives us the horizontal angle
+
                                 current_lon_deg = math.degrees(math.atan2(tx, tz))
 
                                 # 3. Final Rotation Alignment
-                                # To match your 'Expected' output:
+
                                 target_rot_x = target_lat_deg  # Result: 40.27
                                 target_rot_y = -current_lon_deg + 20.0  # Result: 142.99 ( -(-122.99) + 20 )
 
                                 # --- Pan and Zoom ---
-                                # Since you are moving the point 45 degrees to the right,
-                                # keep the pan smaller or zero so it doesn't fly off the right edge.
-                                target_pan_x = -1.0  # Subtle shift to the right
+
+                                target_pan_x = -1.0  #  shift to the right
                                 target_zoom_level = -6.0
                                 target_ui_offset_x = target_pan_x * W/6
 
@@ -340,7 +338,7 @@ def main():
                         glBindBuffer(GL_ARRAY_BUFFER, vbo)
                         glBufferData(GL_ARRAY_BUFFER, vertex_data.nbytes, vertex_data, GL_STATIC_DRAW)
 
-                    # 2. Let the SearchBar object handle typing and backspacing internally
+
                     elif event.key == pygame.K_BACKSPACE:
                         search_bar.set_text(search_bar.text[:-1])
 
@@ -349,7 +347,7 @@ def main():
 
 
                 else:
-                    # Global hotkeys (only when not typing)
+                    # global hotkeys (only when not typing)
                     if event.key == pygame.K_b:
                         show_borders = not show_borders
                     if event.key == pygame.K_n:
@@ -465,25 +463,25 @@ def main():
 
         # --- ONLY ANIMATE OUTBOUND FLIGHTS ON FILTERED SEARCH ---
         if is_filtered:
-            speed = 0.03  # The constant speed of the dots
+            speed = 0.03  #the constant speed of the dots
 
-            # 1. Tick the timer and spawn a new wave if it's time
+
             wave_spawn_timer += speed
-            if wave_spawn_timer >= 2:  # Every 1.5 units, launch a new pulse! (Lower = faster pulses)
+            if wave_spawn_timer >= 2:  # every 1.5 units, new pulse
                 active_waves.append(0.0)
                 wave_spawn_timer = 0.0
 
             # 2. Draw all active waves and move them forward
             surviving_waves = []
             for dist in active_waves:
-                # Draw this wave (your function returns True when it completely finishes)
+
                 wave_finished = draw_shining_dots(vertex_data, dist, POINTS_PER_ARC)
 
-                # If the wave is still actively flying, keep it and add speed for the next frame
+
                 if not wave_finished:
                     surviving_waves.append(dist + speed)
 
-            # Update the main list with only the waves that haven't finished yet
+
             active_waves = surviving_waves
         # --------------------------------------------------------
 
