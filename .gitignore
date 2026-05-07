@@ -1,2 +1,3 @@
 .venv
-._pycache
+._pycache\
+.PythonProject00000000000/__pycache__
