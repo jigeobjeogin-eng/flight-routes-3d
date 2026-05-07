@@ -36,10 +36,15 @@ Themes: default, gold, inferno, mint, purple
 ## DEPENDENCIES
 PYTHON 3.13
 
-To install core libraries, run
+inside project file, simply run commands
 ```commandline
-pip install -r requirements.txt
+python -m venv .venv
 ```
+```commandline
+pip install -r requirments.txt
+```
+
+
 
 
 
