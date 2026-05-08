@@ -3,6 +3,8 @@ import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
 import numpy as np
 import json
+from pathlib import Path
+
 
 
 
@@ -73,6 +75,7 @@ def get_airway_data(np, lat_lon_to_xyz, EARTH_RADIUS, POINTS_PER_ARC):
 
 
 #9.0
+
 
 
 
@@ -150,7 +153,17 @@ def get_filtered_airway_data(np_module, lat_lon_to_xyz, r, points_per_arc, searc
 
 
 
-def get_world_borders(lat_lon_to_3d_func, earth_radius, filepath = 'data/borders.geojson'):
+
+def get_border_path():
+    # This finds the folder where main.py is located
+    BASE_DIR = Path(__file__).resolve().parent
+
+    # If your data is in a subfolder called 'data'
+    DATA_PATH = BASE_DIR / "borders.geojson"
+
+    return DATA_PATH
+
+def get_world_borders(lat_lon_to_3d_func, earth_radius, filepath = get_border_path()):
     """
     Parses a GeoJSON file and converts lat/lon coordinates into 3D sphere vertices.
     """
