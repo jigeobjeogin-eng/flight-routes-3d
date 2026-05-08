@@ -20,7 +20,7 @@ Config file :  transportation/src/program/config.py
 POINTS_PER_ARC = 10 
 WINDOW_SIZE = 0 
 FONT_PATH = os.path.join(BASE_DIR, 'data', 'font.ttf') 
-import themes.default as colors 
+import program.themes.default as colors 
 ```
 POINTS_PER_ARC determines line resolution, higher values will take the program
 longer to load.
@@ -29,7 +29,7 @@ For fullscreen, use WINDOW_SIZE = 0, else use format (width, height).
 
 For switching UI theme, simply change the last line 
 ```commandline
-import themes.gold as colors 
+import program.themes.gold as colors 
 ```
 Themes: default, gold, inferno, mint, purple
 
@@ -37,11 +37,21 @@ Themes: default, gold, inferno, mint, purple
 PYTHON 3.13
 
 Run a terminal and run the commands below inside /flight-routes-3d-main
+<br>
+<br>
+Linux
 ```commandline
 python3 -m venv venv && source venv/bin/activate
 ```
 ```commandline
 pip install -e . && run-app
+```
+Windows
+```commandline
+python -m venv venv; .\venv\Scripts\Activate.ps1
+```
+```commandline
+pip install -e .; run-app
 ```
 
 
