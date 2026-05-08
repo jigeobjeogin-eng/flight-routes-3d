@@ -6,9 +6,42 @@ build-backend = "setuptools.build_meta"
 name = "flight-routes-3d"
 version = "0.1.0"
 dependencies = [
+# --- Geography & Data (10) ---
+    "geopandas>=1.0.0",
+    "pandas==3.0.2",
+    "numpy>=1.26.0",
+    "shapely==2.1.2",
+    "pyproj==3.7.2",
+    "pyogrio==0.12.1",
+    "fiona>=1.9.0",
+    "rtree>=1.2.0",
+    "pooch==1.9.0",
+    "SQLAlchemy==2.0.49",
+
+    # --- Graphics & UI (7) ---
+    "pygame==2.6.1",
+    "pygame-monitor==0.1.0",
+    "PyOpenGL==3.1.10",
+    "PyQt6>=6.6.0",
+    "matplotlib>=3.8.0",
+    "scipy>=1.12.0",
+    "platformdirs==4.9.6",
+
+    # --- Networking & System (10) ---
+    "requests==2.33.1",
+    "urllib3==2.6.3",
+    "certifi>=2024.2.2",
+    "idna>=3.6",
+    "charset-normalizer>=3.3.0",
+    "python-dateutil==2.9.0.post0",
+    "six==1.17.0",
+    "typing_extensions==4.15.0",
+    "packaging>=24.0",
+    "setuptools>=69.0.0"
+
 
 ]
 
 [project.scripts]
 
-run-routes = "routes_app.main:main"
+run-app = "program.main:main"
