@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flight-routes-3d"
+version = "0.1.0"
+dependencies = [
+
+]
+
+[project.scripts]
+
+run-routes = "routes_app.main:main"
