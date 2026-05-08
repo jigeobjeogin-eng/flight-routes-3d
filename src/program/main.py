@@ -1,6 +1,6 @@
-import src.program.data.dataset as dataset
-from TextBox import TextBox, SearchBar
-from renderer import *
+import program.data.dataset as dataset
+from program.TextBox import TextBox, SearchBar
+from program.renderer import *
 import sys
 import math
 
