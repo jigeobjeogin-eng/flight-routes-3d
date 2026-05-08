@@ -2,7 +2,8 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import math
-from config import *
+from program.config import *
+
 
 #9.0
 
