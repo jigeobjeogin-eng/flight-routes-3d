@@ -1,9 +1,8 @@
-
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
-from config import *
+from program.config import *
 
 
 
