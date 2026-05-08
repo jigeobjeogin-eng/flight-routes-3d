@@ -36,12 +36,12 @@ Themes: default, gold, inferno, mint, purple
 ## DEPENDENCIES
 PYTHON 3.13
 
-inside project file, simply run commands
+Run a terminal and run the commands below inside /flight-routes-3d-main
 ```commandline
-python -m venv .venv
+python3 -m venv venv && source venv/bin/activate
 ```
 ```commandline
-pip install -r requirments.txt
+pip install -e . && run-app
 ```
 
 
